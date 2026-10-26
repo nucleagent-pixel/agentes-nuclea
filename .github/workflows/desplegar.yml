@@ -1,0 +1,46 @@
+# Prueba e instala el Agente de Caja en Firebase cada vez que cambia main,
+# o a mano desde la pestaña Actions de GitHub.
+name: Desplegar agente de caja
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: functions
+      - run: npm test
+        working-directory: functions
+
+      - name: Credencial de Firebase
+        if: ${{ env.CLAVE != '' }}
+        env:
+          CLAVE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$CLAVE" > "$RUNNER_TEMP/clave.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/clave.json" >> "$GITHUB_ENV"
+
+      - name: Guardar claves del agente en Firebase
+        if: ${{ env.GOOGLE_APPLICATION_CREDENTIALS != '' }}
+        env:
+          LEONA_WEBHOOK_CLAVE: ${{ secrets.LEONA_WEBHOOK_CLAVE }}
+          META_TOKEN: ${{ secrets.META_TOKEN }}
+          META_CUENTA: ${{ secrets.META_CUENTA }}
+        run: |
+          for nombre in LEONA_WEBHOOK_CLAVE META_TOKEN META_CUENTA; do
+            printf '%s' "${!nombre}" > "$RUNNER_TEMP/s"
+            npx --yes firebase-tools@15 functions:secrets:set "$nombre" --data-file "$RUNNER_TEMP/s" --project caja-pdfs --force
+          done
+          rm -f "$RUNNER_TEMP/s"
+
+      - name: Instalar funciones
+        if: ${{ env.GOOGLE_APPLICATION_CREDENTIALS != '' }}
+        run: npx --yes firebase-tools@15 deploy --only functions --project caja-pdfs --force
