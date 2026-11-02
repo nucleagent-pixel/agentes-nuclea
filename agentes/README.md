@@ -12,7 +12,7 @@ Cada agente termina su respuesta con un bloque `=== EXPEDIENTE · TURNO N ===`. 
 
 1. En claude.ai, crea tres Proyectos: "1 · Investigador", "2 · Creador de producto" y "3 · Guionista".
 2. En cada Proyecto, pega en **Instrucciones** el texto que está debajo de la línea `---` de su archivo.
-3. En cada Proyecto, sube a **Conocimiento** un ejemplo real: un producto que ya hayan hecho, un guion que funcionó o un flujo de Leona.
+3. En cada Proyecto, sube a **Conocimiento** un ejemplo real. En el Creador, `marca.ts` y `clases.ts` de un reto anterior; en el Guionista, un flujo de Leona que haya funcionado, **sin datos bancarios**.
 4. El turno 1 termina con el expediente. La persona del turno 2 lo pega en un chat nuevo del Proyecto "2". El turno 3 recibe el expediente con los turnos 1 y 2.
 
 Para el equipo: guarden cada expediente terminado en una carpeta compartida (por ejemplo, en Drive), con el nombre del producto.
