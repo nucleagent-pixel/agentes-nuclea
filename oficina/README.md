@@ -1,10 +1,10 @@
 # Oficina NUCLEA
 
-El tablero de productos y la oficina en pixel art donde trabajan Inés (Investigadora), Teo (Creador de producto) y Gabi (Guionista).
+El tablero de productos y la oficina en pixel art donde trabajan tres personajes originales: el Detective (investigación, de Santiago), el Hada (taller de producto, de Nicole) y la Columnista (guiones, de Anyela).
 
 - Cada producto es una tarjeta que pasa por tres turnos: Investigación, Producto y Guiones.
 - Quien toma un turno abre su agente (Claude in Chrome o el Proyecto de Claude), pega el expediente anterior y, al terminar, pega el expediente nuevo y lo entrega.
-- En la oficina, el avatar del agente camina a su escritorio cuando alguien tomó su turno. Si hay productos esperando, se lo dice en un globo.
+- La oficina tiene una oficina por departamento, un pasillo, la sala de juntas y el café. Cuando nadie tomó el turno de un agente, su avatar descansa en el café. Cuando alguien lo toma, camina a su oficina. Si los tres están trabajando al mismo tiempo, se reúnen en la sala de juntas. Si hay productos esperando, lo dicen en un globo y se ven papeles con un número rojo en su escritorio.
 - Para verla con datos de ejemplo, sin iniciar sesión, abre la dirección con `?demo=1` al final.
 
 ## Instalación (una sola vez)
@@ -16,6 +16,6 @@ El tablero de productos y la oficina en pixel art donde trabajan Inés (Investig
 
 ## Cambiar nombres, enlaces o colores
 
-Todo está en `config.js`: los nombres y colores de los avatares, el enlace que abre cada agente (por ejemplo, el de cada Proyecto de Claude), los países y los administradores. Si cambias los administradores, cámbialos también en `firestore.rules`.
+Todo está en `config.js`: los nombres, la persona a cargo, las frases y los colores de los avatares, el enlace que abre cada agente (por ejemplo, el de cada Proyecto de Claude), los países y los administradores. Si cambias los administradores, cámbialos también en `firestore.rules`.
 
 Para publicar un cambio, vuelve a comprimir los archivos (sin `firestore.rules` ni este README) y arrástralos al mismo sitio de Netlify, en **Deploys**.

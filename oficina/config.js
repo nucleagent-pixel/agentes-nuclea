@@ -15,38 +15,46 @@ export const FIREBASE = {
 // Correos que siempre son administradores (deben coincidir con firestore.rules).
 export const ADMINS = ["nucleagent@gmail.com"];
 
-// Los tres agentes. "donde" es el enlace que abre cada persona para trabajar
-// su turno: la extensión de Chrome o el Proyecto de Claude correspondiente.
+// Los tres agentes. "persona" es quien lo usa y aparece junto al avatar.
+// "donde" es el enlace que abre esa persona para trabajar su turno.
+// Los personajes son originales, inspirados en un detective clásico, un hada
+// del taller y una columnista de Nueva York.
 export const AGENTES = [
   {
     etapa: "investigacion",
-    nombre: "Inés",
-    rol: "Investigadora",
-    zona: "Investigación",
+    nombre: "Detective",
+    persona: "Santiago",
+    rol: "Investigador",
+    zona: "Agencia de investigación",
     donde: "https://www.facebook.com/ads/library/",
     dondeTexto: "Abrir la Biblioteca de anuncios (usa Claude in Chrome)",
-    colores: { pelo: "#3b2418", piel: "#f1c7a5", ropa: "#d9a13b", pantalon: "#5a4a3a", zapatos: "#2b2b2b", gafas: "#1d1d1d" },
-    estilo: "bob",
+    colores: { sombrero: "#5b4636", cinta: "#2b211a", pelo: "#3b2418", piel: "#e9b98f", ropa: "#c9a46a", ropa2: "#8a6a3e", camisa: "#f4efe4", detalle: "#9c2f2f", pantalon: "#3a3530", zapatos: "#24201c" },
+    estilo: "detective",
+    frases: { trabajando: "Siguiendo pistas 🔍", libre: "Café negro, sin azúcar ☕", espera: "¡Hay un caso nuevo!" },
   },
   {
     etapa: "producto",
-    nombre: "Teo",
-    rol: "Creador de producto",
-    zona: "Taller de producto",
+    nombre: "Hada",
+    persona: "Nicole",
+    rol: "Creadora de producto",
+    zona: "Taller del hada",
     donde: "https://claude.ai/projects",
     dondeTexto: "Abrir el Proyecto \"2 · Creador de producto\"",
-    colores: { pelo: "#1f1a17", piel: "#c98b62", ropa: "#3f8f6b", pantalon: "#2f3b55", zapatos: "#e8e2d8" },
-    estilo: "rizos",
+    colores: { pelo: "#f2cf5b", piel: "#f6d3b8", ropa: "#5fbf6a", ropa2: "#3f9a4f", pantalon: "#5fbf6a", zapatos: "#3f9a4f", detalle: "#ffffff", alas: "rgba(190, 240, 255, 0.55)" },
+    estilo: "hada",
+    frases: { trabajando: "Creando con polvo de hada ✨", libre: "Descansando las alas ✨", espera: "¡Hay algo para crear!" },
   },
   {
     etapa: "guiones",
-    nombre: "Gabi",
+    nombre: "Columnista",
+    persona: "Anyela",
     rol: "Guionista",
     zona: "Estudio de guiones",
     donde: "https://claude.ai/projects",
     dondeTexto: "Abrir el Proyecto \"3 · Guionista\"",
-    colores: { pelo: "#a8432a", piel: "#f3d1b8", ropa: "#7b4fa3", pantalon: "#2d2d3a", zapatos: "#7b4fa3" },
-    estilo: "largo",
+    colores: { pelo: "#e8c37a", piel: "#f3d1b8", ropa: "#e85a9a", ropa2: "#b83f78", pantalon: "#f7e3ef", zapatos: "#d6336c", detalle: "#ffffff", labios: "#c2185b" },
+    estilo: "columnista",
+    frases: { trabajando: "Y no pude evitar preguntarme… ✍️", libre: "Un cosmo y vuelvo 🍸", espera: "¡Hay un guion por escribir!" },
   },
 ];
 
