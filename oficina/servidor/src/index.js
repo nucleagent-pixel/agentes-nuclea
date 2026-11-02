@@ -1,6 +1,7 @@
 // Servidor del chat de la Oficina NUCLEA (Cloudflare Worker).
 import { INSTRUCCIONES } from "./instrucciones.js";
-import { ETAPAS, sinEncabezado, sistema, historial } from "./conversacion.js";
+import { AGENTES, PROXIMOS } from "../../config.js";
+import { sinEncabezado, sistema, historial, generico } from "./conversacion.js";
 import { crearFirestore, ErrorFirestore } from "./firestore.js";
 
 // Valores por defecto: así se puede pegar en el editor de Cloudflare sin configurar variables.
@@ -12,38 +13,45 @@ const CORS = {
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
 };
 const json = (status, datos) => new Response(JSON.stringify(datos), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+const ID = /^[\w-]{1,100}$/;
 
 export default {
   async fetch(req, env) {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
-    if (url.pathname === "/") return json(200, { ok: true, servicio: "Chat de la Oficina NUCLEA" });
+    if (url.pathname === "/") return json(200, { ok: true, servicio: "Chat de la Oficina NUCLEA", agentes: AGENTES.map((a) => a.id) });
     if (url.pathname !== "/chat" || req.method !== "POST") return json(404, { error: "No existe" });
 
     const token = (req.headers.get("Authorization") || "").replace(/^Bearer /, "");
     if (!token) return json(401, { error: "Inicia sesión de nuevo" });
-    const { productoId, etapa } = await req.json().catch(() => ({}));
-    if (!ETAPAS.includes(etapa) || typeof productoId !== "string" || !/^[\w-]{1,100}$/.test(productoId)) {
-      return json(400, { error: "Faltan datos" });
-    }
+    const { conversacionId } = await req.json().catch(() => ({}));
+    if (typeof conversacionId !== "string" || !ID.test(conversacionId)) return json(400, { error: "Faltan datos" });
 
-    // 1. Producto, conversación y conocimiento, leídos con el permiso de quien escribe.
+    // 1. Conversación, tablero y conocimiento, leídos con el permiso de quien escribe.
     const db = crearFirestore({ proyecto: env.FIREBASE_PROYECTO || PROYECTO, token, base: env.FIRESTORE_URL || undefined });
-    let producto, mensajes, conocimiento;
+    let conv, mensajes, productos, conocimiento, agente;
     try {
-      producto = await db.documento(`productos/${productoId}`);
-      [mensajes, conocimiento] = await Promise.all([
-        db.lista(`productos/${productoId}/mensajes`),
-        db.documento(`conocimiento/${etapa}`, true).catch(() => null),
+      conv = await db.documento(`conversaciones/${conversacionId}`);
+      agente = AGENTES.find((a) => a.id === conv.agente);
+      if (!agente) return json(400, { error: "Este agente todavía no tiene servidor. Vuelve a pegar chat-worker.js en Cloudflare." });
+      [mensajes, productos, conocimiento] = await Promise.all([
+        db.lista(`conversaciones/${conversacionId}/mensajes`),
+        db.lista("productos").catch(() => []),
+        db.documento(`conocimiento/${agente.id}`, true)
+          .then((k) => k || (agente.etapa ? db.documento(`conocimiento/${agente.etapa}`, true) : null))
+          .catch(() => null),
       ]);
     } catch (e) {
       return json(e instanceof ErrorFirestore ? e.status : 500, { error: e.message });
     }
-    const turnos = historial(mensajes.filter((m) => m.etapa === etapa));
+    const turnos = historial(mensajes);
     if (!turnos.length || turnos[turnos.length - 1].role !== "user") return json(400, { error: "No hay un mensaje nuevo para responder" });
+    productos.sort((a, b) => String(b.creadoEn).localeCompare(String(a.creadoEn)));
+    const producto = conv.productoId ? productos.find((p) => p.id === conv.productoId) : null;
 
     // 2. Claude responde en streaming; el Worker solo pasa los eventos sin procesarlos.
     if (!env.ANTHROPIC_API_KEY) return json(500, { error: "Falta la clave de Claude en Cloudflare (ANTHROPIC_API_KEY)" });
+    const instrucciones = INSTRUCCIONES[agente.id] ? sinEncabezado(INSTRUCCIONES[agente.id]) : generico(agente);
     const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -56,10 +64,10 @@ export default {
         model: env.MODELO || MODELO,
         max_tokens: 64000,
         stream: true,
-        output_config: { effort: etapa === "producto" ? "high" : "medium" },
+        output_config: { effort: agente.esfuerzo || "medium" },
         cache_control: { type: "ephemeral" },
         fallbacks: "default",
-        system: sistema({ etapa, producto, conocimiento: conocimiento?.texto || "", instrucciones: sinEncabezado(INSTRUCCIONES[etapa]) }),
+        system: sistema({ agente, agentes: AGENTES, proximos: PROXIMOS, producto, productos, conocimiento: conocimiento?.texto || "", instrucciones }),
         messages: turnos,
       }),
     });

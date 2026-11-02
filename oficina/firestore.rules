@@ -37,8 +37,19 @@ service cloud.firestore {
       }
     }
 
+    // Conversaciones con los agentes (libres o ligadas a un producto) y sus mensajes.
+    match /conversaciones/{id} {
+      allow read, create, update: if esEquipo();
+      allow delete: if esAdmin();
+
+      match /mensajes/{m} {
+        allow read, create, update: if esEquipo();
+        allow delete: if esAdmin();
+      }
+    }
+
     // Conocimiento de referencia de cada agente (lo leen los agentes; lo editan los administradores).
-    match /conocimiento/{etapa} {
+    match /conocimiento/{agente} {
       allow read: if esEquipo();
       allow write: if esAdmin();
     }

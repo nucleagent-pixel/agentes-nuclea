@@ -1,10 +1,12 @@
 # Oficina NUCLEA
 
-El tablero de productos y la oficina en pixel art donde trabajan tres personajes originales: el Detective (investigación, de Santiago), el Hada (taller de producto, de Nicole) y la Columnista (guiones, de Anyela).
+NUCLEA OS: la oficina de agentes del equipo. Tiene un menú lateral con los departamentos y los agentes, un mapa en pixel art donde se ve a cada agente trabajar, y un chat siempre abierto con cada uno.
 
-- Cada producto es una tarjeta que pasa por tres turnos: Investigación, Producto y Guiones.
-- Quien toma un turno abre su agente (Claude in Chrome o el Proyecto de Claude), pega el expediente anterior y, al terminar, pega el expediente nuevo y lo entrega.
-- La oficina tiene una oficina por departamento, un pasillo, la sala de juntas y el café. Cuando nadie tomó el turno de un agente, su avatar descansa en el café. Cuando alguien lo toma, camina a su oficina. Si los tres están trabajando al mismo tiempo, se reúnen en la sala de juntas. Si hay productos esperando, lo dicen en un globo y se ven papeles con un número rojo en su escritorio.
+- **Agentes de hoy (Fábrica de productos):** el Detective (investigación, de Santiago), el Hada (taller de producto, de Nicole) y la Columnista (guiones, de Anyela). Los personajes son originales.
+- **Próximamente:** Finanzas y Contenido, con los agentes que vienen en camino. En el mapa están en una oficina "en obra".
+- **El mundo:** cada agente tiene su oficina. Cuando no tiene trabajo descansa en el café; cuando hay un turno en curso o está escribiendo, camina a su escritorio; si todos trabajan a la vez, se reúnen en la sala de juntas. Al tocar a un agente se abre su tarjeta con sus pendientes y el botón **Chatear aquí**.
+- **Tablero:** cada producto pasa por tres turnos (Investigación, Producto y Guiones).
+- **Te toca:** lo que espera a la persona que entró (sus turnos en curso y lo que espera a sus agentes).
 - Para verla con datos de ejemplo, sin iniciar sesión, abre la dirección con `?demo=1` al final.
 
 ## Instalación (una sola vez)
@@ -16,13 +18,14 @@ El tablero de productos y la oficina en pixel art donde trabajan tres personajes
 
 ## Chat con los agentes
 
-Al tocar a un agente se abre su chat a la derecha. Se elige el producto, se le escribe y responde en tiempo real con Claude (modelo Opus 5.5), a través del servidor del chat en Cloudflare. Todo el equipo ve la conversación en vivo y el avatar muestra "Escribiendo…" en su oficina.
+El chat está siempre abierto a la derecha (en pantallas pequeñas, con el botón **Chat**). Arriba se elige el agente; cada agente tiene varias conversaciones y **+ Nueva** abre otra. Responde en tiempo real con Claude (modelo Opus 5.5), a través del servidor del chat en Cloudflare. Todo el equipo ve las conversaciones en vivo.
 
-- El agente ya conoce el producto y los expedientes de los agentes anteriores.
+- **Conversaciones libres:** se le puede preguntar cualquier cosa de su área, sin producto.
+- **Conversaciones de un producto:** al empezar se elige "Sobre un producto". El agente conoce ese producto y los expedientes de los agentes anteriores. Cuando cierra con su expediente, aparece **Entregar** para pasar el producto al siguiente agente.
+- **Información en conjunto:** en cada mensaje, todos los agentes ven el tablero completo (productos, quién los trabaja y un resumen de los expedientes) y saben qué hace cada agente. Así cada uno trabaja por su lado, pero con la información de todos.
 - Cuando el Hada entrega archivos, aparecen botones para descargar la app para Netlify (.zip, con los íconos PNG generados) y los bonos.
-- Cuando el agente cierra con su expediente, aparece el botón **Entregar** que pasa el producto al siguiente agente.
 - El Detective no navega por internet: la búsqueda se hace con Claude in Chrome y se pega en su chat.
-- En **Conocimiento** (solo administradores) se pega o se sube el material de referencia de cada agente, por ejemplo el `index.html` de un reto anterior para el Hada.
+- En **Conocimiento** (solo administradores) se pega o se sube el material de referencia de cada agente.
 
 ### Activar el chat (una sola vez)
 
@@ -37,8 +40,26 @@ El chat usa un servidor pequeño en Cloudflare (gratis, sin tarjeta) que guarda 
 
 La clave de Claude solo se guarda en Cloudflare; nunca en el chat ni en el código. El código del servidor está en `servidor/` (con `npm run construir` se vuelve a generar `chat-worker.js` cuando cambian las instrucciones de los agentes).
 
+## Actualizar a una versión nueva
+
+Cuando cambie la oficina, son tres pasos, en este orden:
+
+1. **Servidor:** en Cloudflare → el Worker `oficina-nuclea-chat` → **Edit code**, borra todo, pega el `chat-worker.js` nuevo y pulsa **Deploy**. La clave guardada no se toca.
+2. **Reglas:** pega `firestore.rules` en Firebase → Firestore Database → Reglas → **Publicar**.
+3. **Oficina:** en Netlify → el sitio → **Deploys**, arrastra el `oficina-nuclea.zip` nuevo.
+
+## Sumar un agente o un departamento
+
+Todo se define en `config.js`:
+
+- `DEPARTAMENTOS`: nombre y color de cada departamento.
+- `AGENTES`: cada agente con su departamento, nombre, persona a cargo, descripción, preguntas sugeridas, colores y `instrucciones` (el archivo `.md` de la carpeta `agentes/`). El mapa le arma su oficina y el menú, su fila y su chat. Si su `estilo` no es uno de los existentes, usa una oficina y un personaje genéricos con sus colores.
+- `PROXIMOS`: los agentes que vienen en camino (aparecen en gris y en la oficina en obra).
+
+Después de cambiar `config.js` o las instrucciones, se genera de nuevo `chat-worker.js` (`npm run construir` en `servidor/`) y se siguen los tres pasos de arriba.
+
 ## Cambiar nombres, enlaces o colores
 
-Todo está en `config.js`: los nombres, la persona a cargo, las frases y los colores de los avatares, el enlace de la Biblioteca de anuncios del Detective, los países y los administradores. Si cambias los administradores, cámbialos también en `firestore.rules` y en `functions/index.js`.
+Todo está en `config.js`: los nombres, la persona a cargo, las frases y los colores de los avatares, el enlace de la Biblioteca de anuncios del Detective, los países y los administradores. Si cambias los administradores, cámbialos también en `firestore.rules`.
 
 Para publicar un cambio, vuelve a comprimir los archivos (sin `firestore.rules` ni este README) y arrástralos al mismo sitio de Netlify, en **Deploys**.
