@@ -1,0 +1,34 @@
+rules_version = '2';
+
+// Reglas de la oficina. Se pegan en Firebase: Firestore Database → Reglas → Publicar.
+// Solo entran las personas de la colección "equipo" y los administradores de la lista.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function correo() {
+      return request.auth.token.email.lower();
+    }
+    function sesion() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function miembro() {
+      return exists(/databases/$(database)/documents/equipo/$(correo()));
+    }
+    function esAdmin() {
+      return sesion() && (correo() in ['nucleagent@gmail.com']
+        || (miembro() && get(/databases/$(database)/documents/equipo/$(correo())).data.rol == 'admin'));
+    }
+    function esEquipo() {
+      return sesion() && (esAdmin() || miembro());
+    }
+
+    match /equipo/{email} {
+      allow read: if sesion() && (email == correo() || esEquipo());
+      allow write: if esAdmin();
+    }
+
+    match /productos/{id} {
+      allow read, create, update: if esEquipo();
+      allow delete: if esAdmin();
+    }
+  }
+}
