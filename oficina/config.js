@@ -12,8 +12,9 @@ export const FIREBASE = {
   appId: "1:931808505007:web:6aa7ffa2891eb9a387f85a",
 };
 
-// Dirección de la función que conecta el chat de los agentes con Claude.
-export const CHAT_URL = "https://us-central1-agents-730ec.cloudfunctions.net/chatAgente";
+// Dirección del servidor del chat en Cloudflare (termina en /chat).
+// Ejemplo: "https://oficina-nuclea-chat.tu-subdominio.workers.dev/chat"
+export const CHAT_URL = "";
 
 // Correos que siempre son administradores (deben coincidir con firestore.rules).
 export const ADMINS = ["nucleagent@gmail.com"];

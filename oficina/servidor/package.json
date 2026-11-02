@@ -1,0 +1,15 @@
+{
+  "name": "oficina-nuclea-chat",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "construir": "node construir.mjs",
+    "pretest": "node construir.mjs --solo-instrucciones",
+    "test": "node --test test/*.test.js",
+    "predeploy": "node construir.mjs --solo-instrucciones",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.156.2"
+  }
+}

@@ -16,7 +16,7 @@ El tablero de productos y la oficina en pixel art donde trabajan tres personajes
 
 ## Chat con los agentes
 
-Al tocar a un agente se abre su chat a la derecha. Se elige el producto, se le escribe y responde en tiempo real con Claude (modelo Opus 5.5). Todo el equipo ve la conversación en vivo y el avatar muestra "Escribiendo…" en su oficina.
+Al tocar a un agente se abre su chat a la derecha. Se elige el producto, se le escribe y responde en tiempo real con Claude (modelo Opus 5.5), a través del servidor del chat en Cloudflare. Todo el equipo ve la conversación en vivo y el avatar muestra "Escribiendo…" en su oficina.
 
 - El agente ya conoce el producto y los expedientes de los agentes anteriores.
 - Cuando el Hada entrega archivos, aparecen botones para descargar la app para Netlify (.zip, con los íconos PNG generados) y los bonos.
@@ -26,17 +26,16 @@ Al tocar a un agente se abre su chat a la derecha. Se elige el producto, se le e
 
 ### Activar el chat (una sola vez)
 
-1. **Unir los cambios.** En GitHub, une (merge) el pull request "Fábrica de productos" a `main`.
-2. **Clave de Claude.** En https://platform.claude.com crea la cuenta, agrega créditos y crea una API key. Es aparte de la suscripción de claude.ai y se cobra por uso.
-3. **Plan Blaze.** En Firebase (proyecto `agents-730ec`) → ⚙️ → Uso y facturación → cambia al plan Blaze y pon una alerta de presupuesto.
-4. **Clave de servicio.** En Google Cloud (proyecto `agents-730ec`) → IAM → Cuentas de servicio → crea una cuenta "desplegador" con los roles Editor, Administrador de Cloud Functions, Administrador de Secret Manager, Usuario de cuenta de servicio y Administrador de reglas de Firebase. En Claves → Agregar clave → JSON, descárgala.
-5. **Secretos en GitHub.** En el repositorio → Settings → Secrets and variables → Actions, crea:
-   - `ANTHROPIC_API_KEY`: la API key del paso 2.
-   - `FIREBASE_SA_OFICINA`: el contenido completo del JSON del paso 4.
-6. **Instalar.** En la pestaña Actions abre "Desplegar chat de la oficina" y pulsa **Run workflow**. Instala el chat y también las reglas de seguridad.
-7. **Publicar la oficina.** Sube el `.zip` nuevo de la oficina a Netlify, en **Deploys**.
+El chat usa un servidor pequeño en Cloudflare (gratis, sin tarjeta) que guarda la clave de Claude. Firebase sigue en el plan gratuito.
 
-Las claves nunca se pegan en el chat ni en el código; solo en los secretos de GitHub.
+1. **Clave de Claude.** En https://platform.claude.com crea la cuenta, carga créditos (desde 5 USD) y crea una API key. En la configuración de la organización, en **Limits**, pon un límite de gasto mensual. Es aparte de la suscripción de claude.ai y se cobra por uso.
+2. **Servidor en Cloudflare.** Crea una cuenta gratis en https://dash.cloudflare.com/sign-up. En **Workers & Pages** → **Create** → **Start with Hello World**, ponle de nombre `oficina-nuclea-chat` y pulsa **Deploy**. Luego **Edit code**: borra todo, pega el contenido completo de `chat-worker.js` y pulsa **Deploy**.
+3. **Guardar la clave.** En ese Worker → **Settings** → **Variables and Secrets** → **Add**. Tipo **Secret**, nombre `ANTHROPIC_API_KEY`, valor: la API key del paso 1. Guarda y despliega.
+4. **Dirección del servidor.** Copia la dirección del Worker (termina en `.workers.dev`) y escríbela en `config.js`, en `CHAT_URL`, agregando `/chat` al final. Esta dirección no es secreta.
+5. **Reglas.** Pega `firestore.rules` en Firebase → Firestore Database → Reglas → **Publicar** (cambiaron para el chat).
+6. **Publicar la oficina.** Sube el `.zip` nuevo de la oficina a Netlify, en **Deploys**.
+
+La clave de Claude solo se guarda en Cloudflare; nunca en el chat ni en el código. El código del servidor está en `servidor/` (con `npm run construir` se vuelve a generar `chat-worker.js` cuando cambian las instrucciones de los agentes).
 
 ## Cambiar nombres, enlaces o colores
 

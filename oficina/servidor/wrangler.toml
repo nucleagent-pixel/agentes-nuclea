@@ -1,0 +1,11 @@
+# Servidor del chat de la Oficina NUCLEA en Cloudflare Workers (plan gratuito).
+# Recibe el mensaje desde la oficina, comprueba en Firebase que la persona sea del equipo
+# y transmite la respuesta de Claude en tiempo real. La clave de Claude vive en el
+# secreto ANTHROPIC_API_KEY de Cloudflare, nunca en el código.
+name = "oficina-nuclea-chat"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+[vars]
+FIREBASE_PROYECTO = "agents-730ec"
+MODELO = "claude-opus-5-5"

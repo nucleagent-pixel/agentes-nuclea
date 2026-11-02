@@ -1,7 +1,6 @@
 rules_version = '2';
 
-// Reglas de la oficina. Se instalan solas con el flujo de GitHub "Desplegar chat de la oficina"
-// (o se pegan a mano en Firebase: Firestore Database → Reglas → Publicar).
+// Reglas de la oficina. Se pegan en Firebase: Firestore Database → Reglas → Publicar.
 // Solo entran las personas de la colección "equipo" y los administradores de la lista.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -31,16 +30,17 @@ service cloud.firestore {
       allow read, create, update: if esEquipo();
       allow delete: if esAdmin();
 
-      // El chat lo escribe solo la función del servidor; el equipo lo lee en vivo.
+      // Mensajes del chat con los agentes.
       match /mensajes/{m} {
-        allow read: if esEquipo();
-        allow write: if false;
+        allow read, create, update: if esEquipo();
+        allow delete: if esAdmin();
       }
     }
 
-    // Conocimiento de referencia de cada agente (lo editan los administradores).
+    // Conocimiento de referencia de cada agente (lo leen los agentes; lo editan los administradores).
     match /conocimiento/{etapa} {
-      allow read, write: if esAdmin();
+      allow read: if esEquipo();
+      allow write: if esAdmin();
     }
   }
 }

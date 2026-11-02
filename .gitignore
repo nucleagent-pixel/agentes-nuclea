@@ -2,5 +2,7 @@ node_modules/
 *.log
 .secret*
 clave-servicio*.json
-oficina/functions/node_modules/
-oficina/functions/agentes/
+oficina/servidor/node_modules/
+oficina/servidor/dist/
+oficina/servidor/src/instrucciones.js
+oficina/servidor/.wrangler/

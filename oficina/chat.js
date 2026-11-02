@@ -74,6 +74,9 @@ function descargar(nombre, blob) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
+// Una respuesta "escribiendo" de hace más de 20 minutos quedó interrumpida.
+const vivo = (m) => m.estado === "escribiendo" && !(m.creadoEn && Date.now() - Date.parse(m.creadoEn) > 20 * 60e3);
+
 const slug = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "producto";
 
 export function crearChat({ dialogo, datos, aviso, usuario, productos }) {
@@ -152,14 +155,15 @@ export function crearChat({ dialogo, datos, aviso, usuario, productos }) {
     if (!caja) return;
     const abajo = caja.scrollHeight - caja.scrollTop - caja.clientHeight < 80;
     caja.innerHTML = mensajes.length ? mensajes.map((m) => {
-      const escribiendo = m.estado === "escribiendo";
+      const escribiendo = vivo(m);
+      if (m.estado === "escribiendo" && !escribiendo) m = { ...m, estado: "error", error: "La respuesta se interrumpió (se cerró la página). Envía el mensaje otra vez." };
       return m.rol === "agente"
         ? `<div class="burbuja agente ${escribiendo ? "escribiendo" : ""}"><small>${esc(ag.nombre)}</small>${formato(m.texto, escribiendo)}${escribiendo ? `<span class="cursor">▍</span>` : ""}${m.estado === "error" ? `<p class="error">${esc(m.error || "No se pudo completar la respuesta")}</p>` : ""}</div>`
         : `<div class="burbuja persona"><small>${esc(m.quien || "")}</small>${esc(m.texto)}</div>`;
     }).join("") : `<p class="nota chat-vacio">${productoId ? `Empieza la conversación. ${esc(ag.nombre)} ya conoce el producto y lo que entregaron los agentes anteriores.` : ""}</p>`;
     if (abajo || enviando) caja.scrollTop = caja.scrollHeight;
 
-    const ocupado = enviando || mensajes.some((m) => m.estado === "escribiendo");
+    const ocupado = enviando || mensajes.some(vivo);
     const boton = dialogo.querySelector("#c-enviar");
     if (boton) { boton.disabled = ocupado; boton.textContent = ocupado ? "Escribiendo…" : "Enviar"; }
 

@@ -1,5 +1,6 @@
 // Capa de datos de la oficina: Firebase en producción, memoria en el modo demo (?demo=1).
 import { FIREBASE, ADMINS, ETAPAS, CHAT_URL } from "./config.js";
+import { leerRespuesta } from "./sse.js";
 
 const SDK = "https://www.gstatic.com/firebasejs/12.19.0/";
 const siguiente = (etapa) => ETAPAS[ETAPAS.findIndex((e) => e.id === etapa) + 1]?.id || "listo";
@@ -87,14 +88,47 @@ async function crearFirebase() {
       return fs.onSnapshot(fs.query(fs.collection(db, "productos", productoId, "mensajes"), fs.orderBy("creadoEn")),
         (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.etapa === etapa)), alError);
     },
+    // Guarda el mensaje, pide la respuesta al servidor del chat (Cloudflare) y la va
+    // guardando mientras llega, para que todo el equipo la vea escribirse.
     async enviarMensaje(p, etapa, texto) {
-      const token = await A.currentUser.getIdToken();
-      const r = await fetch(CHAT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ productoId: p.id, etapa, texto }),
-      });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "El chat no respondió (" + r.status + ")");
+      if (!CHAT_URL) throw new Error("Falta la dirección del servidor del chat en config.js");
+      const mensajes = fs.collection(db, "productos", p.id, "mensajes");
+      const refP = ref("productos", p.id);
+      await fs.addDoc(mensajes, { etapa, rol: "persona", quien: usuario.nombre, correo: usuario.correo, texto, estado: "listo", creadoEn: ahora() });
+      const resp = await fs.addDoc(mensajes, { etapa, rol: "agente", texto: "", estado: "escribiendo", creadoEn: ahora() });
+      const cambios = { escribiendo: fs.arrayUnion(etapa), actualizadoEn: ahora() };
+      if (p.etapa === etapa && p.estado !== "en_curso") {
+        Object.assign(cambios, { estado: "en_curso", responsable: { correo: usuario.correo, nombre: usuario.nombre },
+          historial: fs.arrayUnion(evento(usuario, etapa, "tomó el turno")) });
+      }
+      await fs.updateDoc(refP, cambios);
+      let ultimo = 0, guardando = Promise.resolve();
+      try {
+        const r = await fetch(CHAT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await A.currentUser.getIdToken()) },
+          body: JSON.stringify({ productoId: p.id, etapa }),
+        });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "El chat no respondió (" + r.status + ")");
+        const final = await leerRespuesta(r.body, {
+          alTexto(t) {
+            if (Date.now() - ultimo < 800) return;
+            ultimo = Date.now();
+            guardando = guardando.then(() => fs.updateDoc(resp, { texto: t })).catch(() => {});
+          },
+        });
+        let t = final.texto;
+        if (final.fin === "refusal") t += "\n\n(El agente no pudo continuar con esta solicitud. Prueba a reformularla.)";
+        if (final.fin === "max_tokens") t += "\n\n(La respuesta se cortó por largo. Escribe \"continúa\" para seguir.)";
+        await guardando;
+        await fs.updateDoc(resp, { texto: t, estado: "listo", uso: final.uso });
+      } catch (e) {
+        await guardando;
+        await fs.updateDoc(resp, { estado: "error", error: e.message }).catch(() => {});
+        throw e;
+      } finally {
+        await fs.updateDoc(refP, { escribiendo: fs.arrayRemove(etapa) }).catch(() => {});
+      }
     },
     async leerConocimiento(etapa) { return (await fs.getDoc(ref("conocimiento", etapa))).data()?.texto || ""; },
     guardarConocimiento: (etapa, texto) => fs.setDoc(ref("conocimiento", etapa), { texto, actualizadoEn: ahora(), por: usuario.correo }),
