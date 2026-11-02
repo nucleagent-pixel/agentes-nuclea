@@ -8,7 +8,11 @@ const agenteDe = (etapa) => AGENTES.find((a) => a.etapa === etapa);
 const nombreEtapa = (etapa) => ETAPAS.find((e) => e.id === etapa)?.nombre || etapa;
 const fecha = (iso) => (iso ? new Date(iso).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" }) : "");
 
-let datos, usuario = null, productos = [], equipo = [], oficina = null, abierto = null, cancelar = [];
+let datos, usuario = null, productos = [], equipo = [], enlaces = {}, oficina = null, abierto = null, cancelar = [];
+
+// Enlace del chat de un agente: el que pegó un administrador o, si no hay, el de config.js.
+const enlaceDe = (ag) => enlaces[ag.etapa] || (ag.donde && !/claude\.ai\/projects\/?$/.test(ag.donde) ? ag.donde : "");
+const esEnlace = (u) => /^https:\/\/[^\s]+$/.test(u);
 
 function aviso(texto) {
   const a = $("aviso");
@@ -169,22 +173,70 @@ function pintarEquipo() {
   };
 }
 
+/* ---------------- Chats de los agentes ---------------- */
+function abrirChat(ag) {
+  const url = enlaceDe(ag);
+  if (url) {
+    window.open(url, "_blank", "noopener");
+    aviso(`Abriendo el chat de ${ag.nombre}`);
+    return;
+  }
+  pintarChats(ag.etapa);
+  $("d-chats").showModal();
+}
+
+function pintarChats(foco) {
+  const d = $("d-chats");
+  const filas = AGENTES.map((ag) => {
+    const url = enlaceDe(ag);
+    const ayuda = ag.etapa === "investigacion"
+      ? "Abre la Biblioteca de anuncios. Allí se abre el panel de Claude in Chrome con el ícono de la extensión."
+      : `Abre el Proyecto en claude.ai y copia la dirección del navegador. Se ve así: https://claude.ai/project/…`;
+    return `<div class="paso">
+      <b>${esc(ag.nombre)} · ${esc(ag.persona || "")}</b> <span class="nota">(${esc(ag.rol)})</span>
+      <p class="nota">${esc(ayuda)}</p>
+      ${usuario.esAdmin
+        ? `<div class="fila"><input data-enlace="${esc(ag.etapa)}" type="url" placeholder="https://claude.ai/project/…" value="${esc(url)}"></div>`
+        : url ? "" : `<p class="nota">Aún no tiene enlace. Pídele a un administrador que lo pegue en Chats.</p>`}
+      ${url ? `<p><a href="${esc(url)}" target="_blank" rel="noopener">Abrir el chat de ${esc(ag.nombre)} ↗</a></p>` : ""}
+    </div>`;
+  }).join("");
+  d.innerHTML = `<form method="dialog" class="formulario">
+    <h3>Chats de los agentes</h3>
+    <p class="nota">Al tocar a un agente en la oficina se abre su chat en una pestaña nueva.</p>
+    ${filas}
+    <div class="botones"><button value="cerrar" class="btn btn-sec">Cerrar</button>
+      ${usuario.esAdmin ? `<button type="button" class="btn" id="b-guardar-enlaces">Guardar</button>` : ""}</div>
+  </form>`;
+  const g = d.querySelector("#b-guardar-enlaces");
+  if (g) g.onclick = async () => {
+    const campos = [...d.querySelectorAll("[data-enlace]")];
+    const malo = campos.find((c) => c.value.trim() && !esEnlace(c.value.trim()));
+    if (malo) { aviso("Revisa el enlace: debe empezar por https://"); malo.focus(); return; }
+    await intentar(() => Promise.all(campos.map((c) => datos.guardarEnlace(c.dataset.enlace, c.value.trim()))), "Enlaces guardados");
+    d.close();
+  };
+  if (foco) setTimeout(() => d.querySelector(`[data-enlace="${foco}"]`)?.focus(), 50);
+}
+
 /* ---------------- Arranque ---------------- */
 function entrarOficina() {
   mostrar("pantalla-oficina");
   if (!oficina) {
     oficina = crearOficina($("mundo"), {
       alTocarAgente: (ag) => {
+        abrirChat(ag);
         const col = document.querySelector(`.columna[data-etapa="${ag.etapa}"]`);
         if (!col) return;
         document.querySelectorAll(".columna").forEach((c) => c.classList.remove("resaltada"));
         col.classList.add("resaltada");
-        col.scrollIntoView({ behavior: "smooth", block: "center" });
         setTimeout(() => col.classList.remove("resaltada"), 2000);
       },
     });
   }
   $("b-equipo").hidden = !usuario.esAdmin;
+  $("b-chats").hidden = false;
+  cancelar.push(datos.escucharEnlaces((e) => { enlaces = e || {}; if ($("d-chats").open) pintarChats(); }));
   cancelar.push(datos.escucharProductos((lista) => {
     productos = lista;
     $("err-datos").textContent = "";
@@ -204,6 +256,7 @@ async function iniciar() {
   $("b-salir2").onclick = () => datos.salir();
   $("b-nuevo").onclick = () => { $("f-nuevo").reset(); $("d-nuevo").showModal(); };
   $("b-equipo").onclick = () => { pintarEquipo(); $("d-equipo").showModal(); };
+  $("b-chats").onclick = () => { pintarChats(); $("d-chats").showModal(); };
   $("d-nuevo").addEventListener("close", () => {
     if ($("d-nuevo").returnValue !== "ok") return;
     const f = new FormData($("f-nuevo"));

@@ -81,6 +81,12 @@ async function crearFirebase() {
     eliminarProducto: (p) => fs.deleteDoc(ref("productos", p.id)),
     guardarMiembro: (correo, datos) => fs.setDoc(ref("equipo", correo.toLowerCase()), datos),
     quitarMiembro: (correo) => fs.deleteDoc(ref("equipo", correo)),
+
+    // Enlaces al chat de cada agente (los pega un administrador en "Chats").
+    escucharEnlaces(cb) {
+      return fs.onSnapshot(ref("config", "enlaces"), (s) => cb(s.exists() ? s.data() : {}), () => cb({}));
+    },
+    guardarEnlace: (etapa, url) => fs.setDoc(ref("config", "enlaces"), { [etapa]: url }, { merge: true }),
   };
 }
 
@@ -100,7 +106,8 @@ function crearDemo() {
     { id: "p4", nombre: "Reto Acero 30D", pais: "Colombia", etapa: "listo", estado: "pendiente", responsable: null, expedientes: {}, creadoEn: ahora(), historial: [] },
   ];
   let equipo = [{ correo: "ana@nuclea.co", nombre: "Ana", rol: "miembro" }, { correo: "demo@nuclea.co", nombre: "Nicole", rol: "admin" }];
-  const oyentes = new Set(), oyentesEquipo = new Set();
+  const oyentes = new Set(), oyentesEquipo = new Set(), oyentesEnlaces = new Set();
+  let enlaces = {};
   const avisar = () => { oyentes.forEach((cb) => cb(productos.map((p) => ({ ...p })))); oyentesEquipo.forEach((cb) => cb([...equipo])); };
   const cambiar = (id, f) => { productos = productos.map((p) => (p.id === id ? { ...p, ...f(p), actualizadoEn: ahora() } : p)); avisar(); };
 
@@ -123,6 +130,8 @@ function crearDemo() {
     async eliminarProducto(p) { productos = productos.filter((x) => x.id !== p.id); avisar(); },
     async guardarMiembro(correo, datos) { equipo = [...equipo.filter((m) => m.correo !== correo), { correo: correo.toLowerCase(), ...datos }]; avisar(); },
     async quitarMiembro(correo) { equipo = equipo.filter((m) => m.correo !== correo); avisar(); },
+    escucharEnlaces(cb) { oyentesEnlaces.add(cb); setTimeout(() => cb({ ...enlaces }), 0); return () => oyentesEnlaces.delete(cb); },
+    async guardarEnlace(etapa, url) { enlaces = { ...enlaces, [etapa]: url }; oyentesEnlaces.forEach((cb) => cb({ ...enlaces })); },
   };
 }
 

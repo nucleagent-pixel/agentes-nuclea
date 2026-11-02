@@ -29,10 +29,12 @@
   </section>
 
   <section id="pantalla-oficina" hidden>
+    <p class="nota pista">Toca a un agente para abrir su chat.</p>
     <div class="mundo"><canvas id="mundo" aria-label="Oficina virtual con los tres agentes"></canvas></div>
     <div class="acciones">
       <h2>Tablero de productos</h2>
       <div class="derecha">
+        <button id="b-chats" class="btn btn-sec" hidden>Chats</button>
         <button id="b-equipo" class="btn btn-sec" hidden>Equipo</button>
         <button id="b-nuevo" class="btn">+ Nuevo producto</button>
       </div>
@@ -52,6 +54,7 @@
   </form>
 </dialog>
 <dialog id="d-equipo"></dialog>
+<dialog id="d-chats"></dialog>
 <div id="aviso" class="aviso" hidden></div>
 
 <script type="module" src="app.js"></script>

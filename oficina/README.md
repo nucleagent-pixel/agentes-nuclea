@@ -14,6 +14,15 @@ El tablero de productos y la oficina en pixel art donde trabajan tres personajes
 3. **Autorizar esa dirección en Firebase.** Ve a Authentication → Configuración → **Dominios autorizados** → Agregar dominio, y pega la dirección de Netlify sin `https://`.
 4. **Entrar.** Abre la dirección y entra con la cuenta `nucleagent@gmail.com`. En **Equipo**, agrega el correo de Google y el nombre de cada persona.
 
+## Abrir el chat de cada agente
+
+Al tocar a un agente en la oficina se abre su chat en una pestaña nueva. Un administrador pega una sola vez el enlace de cada chat en el botón **Chats**:
+
+- **Detective:** la Biblioteca de anuncios. Allí se abre el panel de Claude in Chrome con el ícono de la extensión.
+- **Hada y Columnista:** la dirección de su Proyecto en claude.ai (se ve así: `https://claude.ai/project/…`). El Proyecto debe estar compartido con las personas que lo usan.
+
+Si un agente no tiene enlace, al tocarlo se abre la ventana de Chats para pegarlo.
+
 ## Cambiar nombres, enlaces o colores
 
 Todo está en `config.js`: los nombres, la persona a cargo, las frases y los colores de los avatares, el enlace que abre cada agente (por ejemplo, el de cada Proyecto de Claude), los países y los administradores. Si cambias los administradores, cámbialos también en `firestore.rules`.

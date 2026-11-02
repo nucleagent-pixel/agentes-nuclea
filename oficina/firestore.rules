@@ -26,6 +26,11 @@ service cloud.firestore {
       allow write: if esAdmin();
     }
 
+    match /config/{id} {
+      allow read: if esEquipo();
+      allow write: if esAdmin();
+    }
+
     match /productos/{id} {
       allow read, create, update: if esEquipo();
       allow delete: if esAdmin();
