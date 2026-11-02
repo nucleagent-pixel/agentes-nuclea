@@ -14,7 +14,7 @@ export const FIREBASE = {
 
 // Dirección del servidor del chat en Cloudflare (termina en /chat).
 // Ejemplo: "https://oficina-nuclea-chat.tu-subdominio.workers.dev/chat"
-export const CHAT_URL = "";
+export const CHAT_URL = "https://oficina-nuclea-chat.nucleagentes.workers.dev/chat";
 
 // Correos que siempre son administradores (deben coincidir con firestore.rules).
 export const ADMINS = ["nucleagent@gmail.com"];

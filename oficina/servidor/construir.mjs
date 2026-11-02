@@ -7,7 +7,7 @@ const leer = (n) => readFileSync(new URL(`../../agentes/${n}`, import.meta.url),
 writeFileSync(new URL("./src/instrucciones.js", import.meta.url),
   "// Generado por construir.mjs desde agentes/*.md. No editar a mano.\n" +
   `export const INSTRUCCIONES = ${JSON.stringify({
-    investigacion: leer("1-investigador.md"),
+    investigacion: leer("1-detective-oficina.md"),
     producto: leer("2-creador-de-producto.md"),
     guiones: leer("3-guionista.md"),
   }, null, 2)};\n`);

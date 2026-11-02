@@ -2,7 +2,7 @@
 
 Tres agentes que trabajan en cadena sobre un mismo **expediente de producto**:
 
-1. [Investigador](1-investigador.md): con Claude in Chrome, encuentra infoproductos validados en Brasil y México según los anuncios activos en Meta.
+1. [Investigador](1-investigador.md): con Claude in Chrome, sigue el método de NUCLEA en la Biblioteca de anuncios (palabra clave | api.whatsapp.com, anunciantes con más de 20 anuncios del mismo producto) y entrega la tabla y las palabras clave nuevas. En la oficina, el [Detective](1-detective-oficina.md) recibe esos resultados, ayuda a elegir y arma el expediente.
 2. [Creador de producto](2-creador-de-producto.md): crea la app del reto (.zip de un solo `index.html` para Netlify) y los bonos en PDF.
 3. [Guionista](3-guionista.md): escribe los guiones de video y el flujo de venta para Leona.
 

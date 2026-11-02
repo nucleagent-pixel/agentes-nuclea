@@ -108,7 +108,7 @@ export function crearChat({ dialogo, datos, aviso, usuario, productos }) {
     const lista = delAgente();
     const p = actual();
     const ayuda = ag.etapa === "investigacion"
-      ? `<p class="nota">El ${esc(ag.nombre)} no navega por internet. Busca con Claude in Chrome en la <a href="${esc(ag.donde)}" target="_blank" rel="noopener">Biblioteca de anuncios</a> y pega aquí lo que encontraste.</p>`
+      ? `<p class="nota">El ${esc(ag.nombre)} no navega por internet. Haz la búsqueda con Claude in Chrome en la <a href="${esc(ag.donde)}" target="_blank" rel="noopener">Biblioteca de anuncios</a> y pega aquí la tabla y las palabras nuevas. <button type="button" class="btn btn-sec btn-mini" id="c-chrome">📋 Copiar instrucciones para Chrome</button></p>`
       : "";
     dialogo.innerHTML = `<div class="chat">
       <header class="chat-cabeza">
@@ -130,6 +130,14 @@ export function crearChat({ dialogo, datos, aviso, usuario, productos }) {
       </form>` : ""}
     </div>`;
     dialogo.querySelector("#c-cerrar").onclick = () => dialogo.close();
+    const chrome = dialogo.querySelector("#c-chrome");
+    if (chrome) chrome.onclick = async () => {
+      try {
+        const t = await (await fetch("instrucciones-chrome.txt")).text();
+        await navigator.clipboard.writeText(t);
+        aviso("Copiado. Pégalo al inicio de la conversación en Claude in Chrome");
+      } catch { aviso("No se pudo copiar"); }
+    };
     const sel = dialogo.querySelector("#c-producto");
     if (sel) sel.onchange = () => { productoId = sel.value; pintar(); escuchar(); };
     const form = dialogo.querySelector("#c-form");

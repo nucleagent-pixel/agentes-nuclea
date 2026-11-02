@@ -33,7 +33,7 @@ test("el sistema incluye solo los expedientes anteriores", () => {
 });
 
 test("quita el encabezado de las instrucciones", () => {
-  const t = sinEncabezado(readFileSync(new URL("../../../agentes/3-guionista.md", import.meta.url), "utf8"));
+  const t = sinEncabezado(readFileSync(new URL("../../../agentes/1-detective-oficina.md", import.meta.url), "utf8"));
   assert.ok(t.length > 200);
   assert.doesNotMatch(t, /Instrucciones para pegar/);
 });
