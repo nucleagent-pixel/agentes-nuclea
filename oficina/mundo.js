@@ -382,6 +382,7 @@ export function crearOficina(canvas, { alTocarAgente } = {}) {
     estado = AGENTES.map((a) => ({
       enCurso: productos.filter((p) => p.etapa === a.etapa && p.estado === "en_curso"),
       pendientes: productos.filter((p) => p.etapa === a.etapa && p.estado !== "en_curso").length,
+      escribiendo: productos.some((p) => (p.escribiendo || []).includes(a.etapa)),
     }));
     listos = productos.filter((p) => p.etapa === "listo").length;
     reunion = estado.every((e) => e.enCurso.length > 0);
@@ -689,7 +690,9 @@ export function crearOficina(canvas, { alTocarAgente } = {}) {
     if (reunion || !av.caja) return;
     const { x, y } = av.caja, e = estado[av.i], f = av.agente.frases || {};
     let texto, fuerte = false;
-    if (e.enCurso.length && av.sentado) {
+    if (e.escribiendo && av.sentado) {
+      texto = "✍️ Escribiendo…";
+    } else if (e.enCurso.length && av.sentado) {
       const p = e.enCurso[0];
       texto = e.enCurso.length > 1 ? `${e.enCurso.length} productos en curso` : `${p.responsable?.nombre || av.agente.persona} · ${p.nombre}`;
     } else if (e.enCurso.length) {

@@ -1,0 +1,47 @@
+# Instala el chat de los agentes y las reglas de la oficina en Firebase (proyecto agents-730ec).
+# Corre solo cuando cambia main en la oficina o en las instrucciones de los agentes,
+# o a mano desde la pestaña Actions de GitHub.
+name: Desplegar chat de la oficina
+
+on:
+  push:
+    branches: [main]
+    paths: ["oficina/functions/**", "oficina/firestore.rules", "agentes/**"]
+  workflow_dispatch:
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Copiar las instrucciones de los agentes
+        run: cp -r agentes oficina/functions/agentes
+      - run: npm install --no-audit --no-fund
+        working-directory: oficina/functions
+      - run: npm test
+        working-directory: oficina/functions
+
+      - name: Credencial de Firebase
+        if: ${{ env.CLAVE != '' }}
+        env:
+          CLAVE: ${{ secrets.FIREBASE_SA_OFICINA }}
+        run: |
+          printf '%s' "$CLAVE" > "$RUNNER_TEMP/clave.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/clave.json" >> "$GITHUB_ENV"
+
+      - name: Guardar la clave de Claude en Firebase
+        if: ${{ env.GOOGLE_APPLICATION_CREDENTIALS != '' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          printf '%s' "$ANTHROPIC_API_KEY" > "$RUNNER_TEMP/s"
+          npx --yes firebase-tools@15 functions:secrets:set ANTHROPIC_API_KEY --data-file "$RUNNER_TEMP/s" --project agents-730ec --force
+          rm -f "$RUNNER_TEMP/s"
+
+      - name: Instalar el chat y las reglas
+        if: ${{ env.GOOGLE_APPLICATION_CREDENTIALS != '' }}
+        working-directory: oficina
+        run: npx --yes firebase-tools@15 deploy --only functions,firestore:rules --project agents-730ec --force

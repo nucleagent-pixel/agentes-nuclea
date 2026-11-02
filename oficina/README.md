@@ -14,17 +14,32 @@ El tablero de productos y la oficina en pixel art donde trabajan tres personajes
 3. **Autorizar esa dirección en Firebase.** Ve a Authentication → Configuración → **Dominios autorizados** → Agregar dominio, y pega la dirección de Netlify sin `https://`.
 4. **Entrar.** Abre la dirección y entra con la cuenta `nucleagent@gmail.com`. En **Equipo**, agrega el correo de Google y el nombre de cada persona.
 
-## Abrir el chat de cada agente
+## Chat con los agentes
 
-Al tocar a un agente en la oficina se abre su chat en una pestaña nueva. Un administrador pega una sola vez el enlace de cada chat en el botón **Chats**:
+Al tocar a un agente se abre su chat a la derecha. Se elige el producto, se le escribe y responde en tiempo real con Claude (modelo Opus 5.5). Todo el equipo ve la conversación en vivo y el avatar muestra "Escribiendo…" en su oficina.
 
-- **Detective:** la Biblioteca de anuncios. Allí se abre el panel de Claude in Chrome con el ícono de la extensión.
-- **Hada y Columnista:** la dirección de su Proyecto en claude.ai (se ve así: `https://claude.ai/project/…`). El Proyecto debe estar compartido con las personas que lo usan.
+- El agente ya conoce el producto y los expedientes de los agentes anteriores.
+- Cuando el Hada entrega archivos, aparecen botones para descargar la app para Netlify (.zip, con los íconos PNG generados) y los bonos.
+- Cuando el agente cierra con su expediente, aparece el botón **Entregar** que pasa el producto al siguiente agente.
+- El Detective no navega por internet: la búsqueda se hace con Claude in Chrome y se pega en su chat.
+- En **Conocimiento** (solo administradores) se pega o se sube el material de referencia de cada agente, por ejemplo el `index.html` de un reto anterior para el Hada.
 
-Si un agente no tiene enlace, al tocarlo se abre la ventana de Chats para pegarlo.
+### Activar el chat (una sola vez)
+
+1. **Unir los cambios.** En GitHub, une (merge) el pull request "Fábrica de productos" a `main`.
+2. **Clave de Claude.** En https://platform.claude.com crea la cuenta, agrega créditos y crea una API key. Es aparte de la suscripción de claude.ai y se cobra por uso.
+3. **Plan Blaze.** En Firebase (proyecto `agents-730ec`) → ⚙️ → Uso y facturación → cambia al plan Blaze y pon una alerta de presupuesto.
+4. **Clave de servicio.** En Google Cloud (proyecto `agents-730ec`) → IAM → Cuentas de servicio → crea una cuenta "desplegador" con los roles Editor, Administrador de Cloud Functions, Administrador de Secret Manager, Usuario de cuenta de servicio y Administrador de reglas de Firebase. En Claves → Agregar clave → JSON, descárgala.
+5. **Secretos en GitHub.** En el repositorio → Settings → Secrets and variables → Actions, crea:
+   - `ANTHROPIC_API_KEY`: la API key del paso 2.
+   - `FIREBASE_SA_OFICINA`: el contenido completo del JSON del paso 4.
+6. **Instalar.** En la pestaña Actions abre "Desplegar chat de la oficina" y pulsa **Run workflow**. Instala el chat y también las reglas de seguridad.
+7. **Publicar la oficina.** Sube el `.zip` nuevo de la oficina a Netlify, en **Deploys**.
+
+Las claves nunca se pegan en el chat ni en el código; solo en los secretos de GitHub.
 
 ## Cambiar nombres, enlaces o colores
 
-Todo está en `config.js`: los nombres, la persona a cargo, las frases y los colores de los avatares, el enlace que abre cada agente (por ejemplo, el de cada Proyecto de Claude), los países y los administradores. Si cambias los administradores, cámbialos también en `firestore.rules`.
+Todo está en `config.js`: los nombres, la persona a cargo, las frases y los colores de los avatares, el enlace de la Biblioteca de anuncios del Detective, los países y los administradores. Si cambias los administradores, cámbialos también en `firestore.rules` y en `functions/index.js`.
 
 Para publicar un cambio, vuelve a comprimir los archivos (sin `firestore.rules` ni este README) y arrástralos al mismo sitio de Netlify, en **Deploys**.

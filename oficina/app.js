@@ -1,6 +1,7 @@
 import { AGENTES, ETAPAS, PAISES } from "./config.js";
 import { crearDatos } from "./datos.js";
 import { crearOficina } from "./mundo.js";
+import { crearChat } from "./chat.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -8,11 +9,8 @@ const agenteDe = (etapa) => AGENTES.find((a) => a.etapa === etapa);
 const nombreEtapa = (etapa) => ETAPAS.find((e) => e.id === etapa)?.nombre || etapa;
 const fecha = (iso) => (iso ? new Date(iso).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" }) : "");
 
-let datos, usuario = null, productos = [], equipo = [], enlaces = {}, oficina = null, abierto = null, cancelar = [];
+let datos, usuario = null, productos = [], equipo = [], oficina = null, chat = null, abierto = null, cancelar = [];
 
-// Enlace del chat de un agente: el que pegó un administrador o, si no hay, el de config.js.
-const enlaceDe = (ag) => enlaces[ag.etapa] || (ag.donde && !/claude\.ai\/projects\/?$/.test(ag.donde) ? ag.donde : "");
-const esEnlace = (u) => /^https:\/\/[^\s]+$/.test(u);
 
 function aviso(texto) {
   const a = $("aviso");
@@ -173,59 +171,44 @@ function pintarEquipo() {
   };
 }
 
-/* ---------------- Chats de los agentes ---------------- */
-function abrirChat(ag) {
-  const url = enlaceDe(ag);
-  if (url) {
-    window.open(url, "_blank", "noopener");
-    aviso(`Abriendo el chat de ${ag.nombre}`);
-    return;
-  }
-  pintarChats(ag.etapa);
-  $("d-chats").showModal();
-}
-
-function pintarChats(foco) {
-  const d = $("d-chats");
-  const filas = AGENTES.map((ag) => {
-    const url = enlaceDe(ag);
-    const ayuda = ag.etapa === "investigacion"
-      ? "Abre la Biblioteca de anuncios. Allí se abre el panel de Claude in Chrome con el ícono de la extensión."
-      : `Abre el Proyecto en claude.ai y copia la dirección del navegador. Se ve así: https://claude.ai/project/…`;
-    return `<div class="paso">
-      <b>${esc(ag.nombre)} · ${esc(ag.persona || "")}</b> <span class="nota">(${esc(ag.rol)})</span>
-      <p class="nota">${esc(ayuda)}</p>
-      ${usuario.esAdmin
-        ? `<div class="fila"><input data-enlace="${esc(ag.etapa)}" type="url" placeholder="https://claude.ai/project/…" value="${esc(url)}"></div>`
-        : url ? "" : `<p class="nota">Aún no tiene enlace. Pídele a un administrador que lo pegue en Chats.</p>`}
-      ${url ? `<p><a href="${esc(url)}" target="_blank" rel="noopener">Abrir el chat de ${esc(ag.nombre)} ↗</a></p>` : ""}
-    </div>`;
-  }).join("");
+/* ---------------- Conocimiento de cada agente ---------------- */
+async function pintarConocimiento(etapa = AGENTES[0].etapa) {
+  const d = $("d-conocimiento");
+  const ag = agenteDe(etapa);
   d.innerHTML = `<form method="dialog" class="formulario">
-    <h3>Chats de los agentes</h3>
-    <p class="nota">Al tocar a un agente en la oficina se abre su chat en una pestaña nueva.</p>
-    ${filas}
-    <div class="botones"><button value="cerrar" class="btn btn-sec">Cerrar</button>
-      ${usuario.esAdmin ? `<button type="button" class="btn" id="b-guardar-enlaces">Guardar</button>` : ""}</div>
+    <h3>Conocimiento de los agentes</h3>
+    <p class="nota">Lo que pegues aquí lo lee el agente en cada conversación: ejemplos, la app de un reto anterior, un guion modelo. No pegues contraseñas ni datos bancarios.</p>
+    <label>Agente<select id="k-agente">${AGENTES.map((a) => `<option value="${esc(a.etapa)}" ${a.etapa === etapa ? "selected" : ""}>${esc(a.nombre)} · ${esc(a.rol)}</option>`).join("")}</select></label>
+    <label>Texto de referencia<textarea id="k-texto" placeholder="Cargando…" disabled></textarea></label>
+    <label class="nota">O súbelo desde un archivo de texto (.html, .md, .txt)<input type="file" id="k-archivo" accept=".html,.htm,.md,.txt,.json,.csv"></label>
+    <div class="botones"><button value="cerrar" class="btn btn-sec">Cerrar</button><button type="button" class="btn" id="k-guardar">Guardar</button></div>
   </form>`;
-  const g = d.querySelector("#b-guardar-enlaces");
-  if (g) g.onclick = async () => {
-    const campos = [...d.querySelectorAll("[data-enlace]")];
-    const malo = campos.find((c) => c.value.trim() && !esEnlace(c.value.trim()));
-    if (malo) { aviso("Revisa el enlace: debe empezar por https://"); malo.focus(); return; }
-    await intentar(() => Promise.all(campos.map((c) => datos.guardarEnlace(c.dataset.enlace, c.value.trim()))), "Enlaces guardados");
-    d.close();
+  const area = d.querySelector("#k-texto");
+  d.querySelector("#k-agente").onchange = (e) => pintarConocimiento(e.target.value);
+  d.querySelector("#k-archivo").onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (f.size > 600000) { aviso("El archivo es muy grande (máximo 600 KB)"); return; }
+    const texto = await f.text();
+    area.value = (area.value ? area.value + "\n\n" : "") + `=== ${f.name} ===\n${texto}`;
   };
-  if (foco) setTimeout(() => d.querySelector(`[data-enlace="${foco}"]`)?.focus(), 50);
+  d.querySelector("#k-guardar").onclick = () => {
+    if (area.value.length > 900000) { aviso("Es demasiado texto (máximo unos 900 KB)"); return; }
+    intentar(() => datos.guardarConocimiento(etapa, area.value), `Conocimiento de ${ag.nombre} guardado`);
+  };
+  try { area.value = await datos.leerConocimiento(etapa); }
+  catch (e) { aviso("No se pudo leer: " + (e.code || e.message)); }
+  area.disabled = false; area.placeholder = "Pega aquí el texto de referencia";
 }
 
 /* ---------------- Arranque ---------------- */
 function entrarOficina() {
   mostrar("pantalla-oficina");
+  if (!chat) chat = crearChat({ dialogo: $("d-chat"), datos, aviso, usuario: () => usuario, productos: () => productos });
   if (!oficina) {
     oficina = crearOficina($("mundo"), {
       alTocarAgente: (ag) => {
-        abrirChat(ag);
+        chat.abrir(ag);
         const col = document.querySelector(`.columna[data-etapa="${ag.etapa}"]`);
         if (!col) return;
         document.querySelectorAll(".columna").forEach((c) => c.classList.remove("resaltada"));
@@ -235,13 +218,13 @@ function entrarOficina() {
     });
   }
   $("b-equipo").hidden = !usuario.esAdmin;
-  $("b-chats").hidden = false;
-  cancelar.push(datos.escucharEnlaces((e) => { enlaces = e || {}; if ($("d-chats").open) pintarChats(); }));
+  $("b-conocimiento").hidden = !usuario.esAdmin;
   cancelar.push(datos.escucharProductos((lista) => {
     productos = lista;
     $("err-datos").textContent = "";
     pintarTablero();
     oficina.actualizar(productos);
+    chat.refrescar();
     if ($("d-producto").open) pintarProducto(true);
   }, (e) => ($("err-datos").textContent = "No se pudieron leer los productos: " + (e.code || e.message))));
   if (usuario.esAdmin) cancelar.push(datos.escucharEquipo((lista) => { equipo = lista; if ($("d-equipo").open) pintarEquipo(); }));
@@ -256,7 +239,7 @@ async function iniciar() {
   $("b-salir2").onclick = () => datos.salir();
   $("b-nuevo").onclick = () => { $("f-nuevo").reset(); $("d-nuevo").showModal(); };
   $("b-equipo").onclick = () => { pintarEquipo(); $("d-equipo").showModal(); };
-  $("b-chats").onclick = () => { pintarChats(); $("d-chats").showModal(); };
+  $("b-conocimiento").onclick = () => { pintarConocimiento(); $("d-conocimiento").showModal(); };
   $("d-nuevo").addEventListener("close", () => {
     if ($("d-nuevo").returnValue !== "ok") return;
     const f = new FormData($("f-nuevo"));

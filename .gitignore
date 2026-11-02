@@ -2,3 +2,5 @@ node_modules/
 *.log
 .secret*
 clave-servicio*.json
+oficina/functions/node_modules/
+oficina/functions/agentes/

@@ -1,5 +1,5 @@
 // Capa de datos de la oficina: Firebase en producción, memoria en el modo demo (?demo=1).
-import { FIREBASE, ADMINS, ETAPAS } from "./config.js";
+import { FIREBASE, ADMINS, ETAPAS, CHAT_URL } from "./config.js";
 
 const SDK = "https://www.gstatic.com/firebasejs/12.19.0/";
 const siguiente = (etapa) => ETAPAS[ETAPAS.findIndex((e) => e.id === etapa) + 1]?.id || "listo";
@@ -82,12 +82,32 @@ async function crearFirebase() {
     guardarMiembro: (correo, datos) => fs.setDoc(ref("equipo", correo.toLowerCase()), datos),
     quitarMiembro: (correo) => fs.deleteDoc(ref("equipo", correo)),
 
-    // Enlaces al chat de cada agente (los pega un administrador en "Chats").
-    escucharEnlaces(cb) {
-      return fs.onSnapshot(ref("config", "enlaces"), (s) => cb(s.exists() ? s.data() : {}), () => cb({}));
+    // Chat con los agentes: la función del servidor escribe la respuesta y aquí se escucha en vivo.
+    escucharMensajes(productoId, etapa, cb, alError) {
+      return fs.onSnapshot(fs.query(fs.collection(db, "productos", productoId, "mensajes"), fs.orderBy("creadoEn")),
+        (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.etapa === etapa)), alError);
     },
-    guardarEnlace: (etapa, url) => fs.setDoc(ref("config", "enlaces"), { [etapa]: url }, { merge: true }),
+    async enviarMensaje(p, etapa, texto) {
+      const token = await A.currentUser.getIdToken();
+      const r = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ productoId: p.id, etapa, texto }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "El chat no respondió (" + r.status + ")");
+    },
+    async leerConocimiento(etapa) { return (await fs.getDoc(ref("conocimiento", etapa))).data()?.texto || ""; },
+    guardarConocimiento: (etapa, texto) => fs.setDoc(ref("conocimiento", etapa), { texto, actualizadoEn: ahora(), por: usuario.correo }),
   };
+}
+
+// Respuestas de ejemplo del modo demo (no llaman a Claude).
+function respuestaDemo(p, etapa) {
+  if (etapa === "producto") {
+    return `¡Listo! Armé la primera versión de la app de "${p.nombre}" para ${p.pais}.\n\n**Lo que cambié frente al original:** plan de 21 días en 3 semanas, rutinas express de 10 minutos y una paleta cálida pensada para mujeres de 35 a 55 años.\n\n=== ARCHIVO: index.html ===\n<!doctype html><html lang="es"><meta charset="utf-8"><title>${p.nombre}</title><body style="font-family:sans-serif;padding:24px"><h1>${p.nombre}</h1><p>App de ejemplo del modo demo.</p></body></html>\n=== FIN ARCHIVO ===\n\n=== ARCHIVO: manifest.webmanifest ===\n{"name":"${p.nombre}","short_name":"Reto","start_url":".","display":"standalone","background_color":"#fff7ef","theme_color":"#e8735a","icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png"}]}\n=== FIN ARCHIVO ===\n\n=== ARCHIVO: icon.svg ===\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#e8735a"/><text x="256" y="330" font-size="240" text-anchor="middle" fill="#fff" font-family="Arial" font-weight="900">21</text></svg>\n=== FIN ARCHIVO ===\n\n=== ARCHIVO: bonos/guia-alimentacion.html ===\n<!doctype html><meta charset="utf-8"><h1>Guía de alimentación</h1><p>Bono de ejemplo.</p>\n=== FIN ARCHIVO ===\n\nFaltan los IDs de YouTube: quedaron como PENDIENTE.\n\n=== EXPEDIENTE · TURNO 2: PRODUCTO ===\nNombre del reto: ${p.nombre}\nPaís: ${p.pais}\nVideos pendientes: 21\n=== FIN TURNO 2 ===`;
+  }
+  if (etapa === "guiones") return `Aquí van los guiones para Leona de "${p.nombre}".\n\n**MENSAJE 1**\n¡Hola! 👋 Qué bueno que escribes…\n\n=== EXPEDIENTE · TURNO 3: GUIONES ===\nFlujo de Leona: listo\nVideos: 3 guiones\n=== FIN TURNO 3 ===`;
+  return `Revisé lo que me pegaste. El producto con más señales es "${p.nombre}": muchos anuncios activos y varios anunciantes copiándolo.\n\n=== EXPEDIENTE · TURNO 1: INVESTIGACIÓN ===\nProducto elegido: ${p.nombre}\nPaíses donde modelarlo: ${p.pais}\n=== FIN TURNO 1 ===`;
 }
 
 /* ---------------------------------------------------------------------
@@ -106,8 +126,8 @@ function crearDemo() {
     { id: "p4", nombre: "Reto Acero 30D", pais: "Colombia", etapa: "listo", estado: "pendiente", responsable: null, expedientes: {}, creadoEn: ahora(), historial: [] },
   ];
   let equipo = [{ correo: "ana@nuclea.co", nombre: "Ana", rol: "miembro" }, { correo: "demo@nuclea.co", nombre: "Nicole", rol: "admin" }];
-  const oyentes = new Set(), oyentesEquipo = new Set(), oyentesEnlaces = new Set();
-  let enlaces = {};
+  const oyentes = new Set(), oyentesEquipo = new Set(), oyentesChat = new Set();
+  const mensajes = [], conocimiento = {};
   const avisar = () => { oyentes.forEach((cb) => cb(productos.map((p) => ({ ...p })))); oyentesEquipo.forEach((cb) => cb([...equipo])); };
   const cambiar = (id, f) => { productos = productos.map((p) => (p.id === id ? { ...p, ...f(p), actualizadoEn: ahora() } : p)); avisar(); };
 
@@ -130,8 +150,23 @@ function crearDemo() {
     async eliminarProducto(p) { productos = productos.filter((x) => x.id !== p.id); avisar(); },
     async guardarMiembro(correo, datos) { equipo = [...equipo.filter((m) => m.correo !== correo), { correo: correo.toLowerCase(), ...datos }]; avisar(); },
     async quitarMiembro(correo) { equipo = equipo.filter((m) => m.correo !== correo); avisar(); },
-    escucharEnlaces(cb) { oyentesEnlaces.add(cb); setTimeout(() => cb({ ...enlaces }), 0); return () => oyentesEnlaces.delete(cb); },
-    async guardarEnlace(etapa, url) { enlaces = { ...enlaces, [etapa]: url }; oyentesEnlaces.forEach((cb) => cb({ ...enlaces })); },
+    escucharMensajes(productoId, etapa, cb) {
+      const f = () => cb(mensajes.filter((m) => m.productoId === productoId && m.etapa === etapa).map((m) => ({ ...m })));
+      oyentesChat.add(f); setTimeout(f, 0); return () => oyentesChat.delete(f);
+    },
+    async enviarMensaje(p, etapa, texto) {
+      const avisarChat = () => oyentesChat.forEach((f) => f());
+      mensajes.push({ id: "m" + Date.now(), productoId: p.id, etapa, rol: "persona", quien: usuario.nombre, texto, estado: "listo" });
+      if (p.etapa === etapa && p.estado !== "en_curso") cambiar(p.id, () => ({ estado: "en_curso", responsable: { correo: usuario.correo, nombre: usuario.nombre } }));
+      const r = { id: "m" + Date.now() + "r", productoId: p.id, etapa, rol: "agente", texto: "", estado: "escribiendo" };
+      mensajes.push(r); cambiar(p.id, (x) => ({ escribiendo: [...(x.escribiendo || []), etapa] })); avisarChat();
+      const completo = respuestaDemo(p, etapa);
+      for (let i = 0; i < completo.length; i += 24) { r.texto = completo.slice(0, i + 24); avisarChat(); await new Promise((ok) => setTimeout(ok, 30)); }
+      r.estado = "listo"; avisarChat();
+      cambiar(p.id, (x) => ({ escribiendo: (x.escribiendo || []).filter((e) => e !== etapa) }));
+    },
+    async leerConocimiento(etapa) { return conocimiento[etapa] || ""; },
+    async guardarConocimiento(etapa, texto) { conocimiento[etapa] = texto; },
   };
 }
 
