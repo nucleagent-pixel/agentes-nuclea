@@ -52,25 +52,36 @@ export default {
     // 2. Claude responde en streaming; el Worker solo pasa los eventos sin procesarlos.
     if (!env.ANTHROPIC_API_KEY) return json(500, { error: "Falta la clave de Claude en Cloudflare (ANTHROPIC_API_KEY)" });
     const instrucciones = INSTRUCCIONES[agente.id] ? sinEncabezado(INSTRUCCIONES[agente.id]) : generico(agente);
-    const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2026-10-21",
-        "anthropic-beta": "server-side-fallback-2026-07-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: env.MODELO || MODELO,
-        max_tokens: 64000,
-        stream: true,
-        output_config: { effort: agente.esfuerzo || "medium" },
-        cache_control: { type: "ephemeral" },
-        fallbacks: "default",
-        system: sistema({ agente, agentes: AGENTES, proximos: PROXIMOS, producto, productos, conocimiento: conocimiento?.texto || "", instrucciones }),
-        messages: turnos,
-      }),
-    });
+    const cuerpo = {
+      model: env.MODELO || MODELO,
+      max_tokens: 64000,
+      stream: true,
+      output_config: { effort: agente.esfuerzo || "medium" },
+      cache_control: { type: "ephemeral" },
+      fallbacks: "default",
+      system: sistema({ agente, agentes: AGENTES, proximos: PROXIMOS, producto, productos, conocimiento: conocimiento?.texto || "", instrucciones }),
+      messages: turnos,
+    };
+    const pedir = (conRespaldo) => {
+      const b = { ...cuerpo };
+      if (!conRespaldo) delete b.fallbacks;
+      return fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2026-10-21",
+          ...(conRespaldo ? { "anthropic-beta": "server-side-fallback-2026-07-01" } : {}),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(b),
+      });
+    };
+    let r = await pedir(true);
+    // Si la cuenta no acepta el modelo de respaldo, se intenta una vez sin él.
+    if (r.status === 400) {
+      const detalle = await r.clone().json().catch(() => ({}));
+      if (/fallback|beta/i.test(detalle?.error?.message || "")) r = await pedir(false);
+    }
     if (!r.ok) {
       const cuerpo = await r.json().catch(() => ({}));
       const msg = cuerpo?.error?.message || "";
@@ -78,7 +89,7 @@ export default {
       const error = r.status === 401 ? "La clave de Claude no es válida"
         : r.status === 429 || r.status === 529 ? "Claude está ocupado, intenta en un minuto"
         : /credit/i.test(msg) ? "No hay créditos en la cuenta de Claude"
-        : "Claude no pudo responder (" + r.status + ")";
+        : "Claude no pudo responder (" + r.status + (msg ? ": " + msg.slice(0, 300) : "") + ")";
       return json(502, { error });
     }
     return new Response(r.body, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" } });
