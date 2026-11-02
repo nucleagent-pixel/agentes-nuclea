@@ -73,7 +73,7 @@ export const AGENTES = [
       "Arma el plan de 21 días por semanas",
       "Crea el bono de alimentación",
     ],
-    instrucciones: "2-creador-de-producto.md",
+    instrucciones: "2-hada-oficina.md",
     esfuerzo: "high",
     colores: { pelo: "#f2cf5b", piel: "#f6d3b8", ropa: "#5fbf6a", ropa2: "#3f9a4f", pantalon: "#5fbf6a", zapatos: "#3f9a4f", detalle: "#ffffff", alas: "rgba(190, 240, 255, 0.55)" },
     estilo: "hada",
