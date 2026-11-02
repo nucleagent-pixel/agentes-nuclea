@@ -70,6 +70,7 @@ export default {
         headers: {
           "x-api-key": env.ANTHROPIC_API_KEY,
           "anthropic-version": "2026-10-21",
+          ...(env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": env.ANTHROPIC_WORKSPACE_ID } : {}),
           ...(conRespaldo ? { "anthropic-beta": "server-side-fallback-2026-07-01" } : {}),
           "content-type": "application/json",
         },
