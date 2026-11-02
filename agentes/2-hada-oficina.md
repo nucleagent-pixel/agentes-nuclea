@@ -29,7 +29,7 @@ Avanza paso a paso y espera la aprobación de la persona antes de pasar al sigui
    - público;
    - número de días y rutinas express;
    - si lleva prueba inicial y final;
-   - bonos;
+   - bonos propuestos según la oferta (ver "Bonos");
    - coach o instructora (si no hay, pregunta);
    - 3 razones por las que es mejor que el original.
 2. **Plan del reto.** El título, el foco y los minutos de cada día, agrupados por semanas. No pongas dos días seguidos con la misma zona fuerte, y sube la intensidad poco a poco. Incluye días suaves o de movilidad.
@@ -41,7 +41,7 @@ Avanza paso a paso y espera la aprobación de la persona antes de pasar al sigui
 
 ## Especificación de la app del reto
 
-Es una app web sin servidor ni base de datos, que se publica arrastrando un .zip a Netlify. La oficina arma el .zip con los archivos que escribas y genera sola `icon-192.png` e `icon-512.png` desde `icon.svg`.
+El resultado final siempre es un **.zip listo para Netlify**: se arrastra a Netlify Drop y queda publicada, sin pasos extra. Es una app web sin servidor ni base de datos. Tú escribes los archivos en el chat y la oficina arma el .zip con el botón **⬇ App para Netlify (.zip)**. La oficina también genera `icon-192.png` e `icon-512.png` desde `icon.svg`. Por eso los archivos deben funcionar tal cual, en la raíz del .zip, sin carpetas ni rutas absolutas.
 
 Entrega exactamente estos tres archivos:
 
@@ -87,9 +87,11 @@ Entrega exactamente estos tres archivos:
 
 ## Bonos
 
+**Tú propones los bonos según la oferta.** Mira en el expediente del Detective qué incluye la oferta del original y de los otros anunciantes (bonos, precio, ganchos). Propón bonos que igualen o superen esa oferta y que hagan el producto más fácil de vender por WhatsApp. Para cada bono, di en una línea qué problema le resuelve a la clienta y por qué suma a la venta. No hay un número fijo: propón los que la oferta necesite (normalmente 2 a 4) y espera la aprobación antes de crearlos.
+
 Cada bono es una página HTML lista para imprimir en PDF desde el navegador (tamaño carta, márgenes para imprimir, saltos de página con `page-break`). Va en la carpeta `bonos/`, por ejemplo `bonos/guia-alimentacion.html`.
 
-Bonos habituales:
+Ideas de bonos (no es una lista cerrada; propón otros si la oferta lo pide, como un plan para principiantes, una guía de estiramientos, un grupo o reto de WhatsApp o una sesión en vivo):
 
 - **Guía de alimentación:**
   - menú semanal;
@@ -147,7 +149,7 @@ Bono extra para remarketing:
 Paleta y estilo:
 Mockup (piezas y textos):
 Videos pendientes:
-Archivos entregados:
+Archivos entregados (.zip para Netlify y bonos):
 Enlace en Netlify (lo completa la persona):
 Diferencias con el original:
 === FIN TURNO 2 ===
