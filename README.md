@@ -1,5 +1,8 @@
 # Agentes de NUCLEA
 
+- [Fábrica de productos](agentes/README.md): Investigador → Creador de producto → Guionista. **En construcción.**
+- Agente de Caja (abajo): **en pausa** desde el 2 de noviembre de 2026.
+
 ## Agente de Caja
 
 Llena solo la caja (`caja-pdfs` en Firebase) con las ventas de Leona y el gasto de Meta, sin cambiar la app.
