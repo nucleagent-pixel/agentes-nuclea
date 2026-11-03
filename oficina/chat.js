@@ -37,11 +37,18 @@ function formato(texto, escribiendo) {
     const kb = Math.max(1, Math.round(cont.length / 1024));
     return `<span class="ficha">📄 ${ruta} · ${abierto && escribiendo ? "escribiendo…" : kb + " KB"}</span>`;
   });
+  // Prompts listos para copiar: se apartan antes del markdown para no tocar su texto.
+  const prompts = [];
+  t = t.replace(/=== PROMPT: (.+?) ===\n([\s\S]*?)(?:\n=== FIN PROMPT ===|$)/g, (_, titulo, cont, i, todo) => {
+    const abierto = escribiendo && !todo.slice(i).includes("=== FIN PROMPT ===");
+    prompts.push(`<span class="prompt"><span class="prompt-cab"><b>📋 ${titulo}</b>${abierto ? "<em>escribiendo…</em>" : "<button type=\"button\" class=\"b-copiar\">Copiar</button>"}</span><pre>${cont}</pre></span>`);
+    return `\u0000${prompts.length - 1}\u0000`;
+  });
   t = t.replace(/^#{1,4} (.+)$/gm, "<b class=\"titulo\">$1</b>")
     .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
     .replace(/`([^`\n]+)`/g, "<code>$1</code>")
     .replace(/(=== EXPEDIENTE[\s\S]*?(?:=== FIN TURNO[^\n]*===|$))/g, "<span class=\"expediente\">$1</span>");
-  return t;
+  return t.replace(/\u0000(\d+)\u0000\n?/g, (_, n) => prompts[n]);
 }
 
 let JSZip = null;
@@ -122,6 +129,19 @@ export function crearChat({ contenedor, datos, aviso, usuario, productos, conver
   let ag = AGENTES[0], convId = null, productoNuevo = "", mensajes = [], dejar = null, adjuntos = [];
   const enviando = new Set();          // conversaciones a las que este navegador les está escribiendo
   const $ = (sel) => contenedor.querySelector(sel);
+  // Botón "Copiar" de los prompts del Hada (se pintan dentro de las burbujas).
+  contenedor.addEventListener("click", async (e) => {
+    const b = e.target.closest(".b-copiar");
+    if (!b) return;
+    const texto = b.closest(".prompt").querySelector("pre").textContent;
+    try { await navigator.clipboard.writeText(texto); }
+    catch {
+      const a = Object.assign(document.createElement("textarea"), { value: texto });
+      document.body.appendChild(a); a.select(); document.execCommand("copy"); a.remove();
+    }
+    b.textContent = "¡Copiado!";
+    setTimeout(() => (b.textContent = "Copiar"), 1800);
+  });
 
   const convsDe = (a) => conversaciones().filter((c) => c.agente === a.id);
   const conv = () => conversaciones().find((c) => c.id === convId);

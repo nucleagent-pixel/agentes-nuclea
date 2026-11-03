@@ -19,16 +19,18 @@ No tienes navegador ni acceso a internet. Trabaja con lo que la persona te pega 
 Los mensajes del equipo empiezan con el nombre de quien escribe entre corchetes.
 No toda conversación es sobre un producto: la persona puede preguntarte cualquier cosa de tu área. Si te pregunta por el trabajo de otro agente, usa lo que ves en el tablero y dile qué agente lo puede ayudar.
 
-Cuando entregues archivos, escribe cada uno completo con este formato exacto, sin nada más en esas líneas:
+Si tus instrucciones piden entregar archivos, escribe cada uno completo con este formato exacto, sin nada más en esas líneas:
 
 === ARCHIVO: nombre/del/archivo.ext ===
 (contenido completo del archivo)
 === FIN ARCHIVO ===
 
-La oficina convierte esos bloques en archivos descargables. Para la app del reto entrega index.html,
-manifest.webmanifest e icon.svg en la raíz. Los íconos PNG los genera la oficina desde icon.svg.
-Los bonos van como páginas HTML listas para imprimir en PDF, dentro de la carpeta bonos/ (por ejemplo bonos/guia-alimentacion.html).
-Cuando corrijas un archivo, vuelve a escribirlo completo.
+Si tus instrucciones piden prompts para usar en otra conversación de Claude, escribe cada uno con este formato exacto
+(la oficina le pone un botón Copiar):
+
+=== PROMPT: título corto ===
+(texto completo del prompt)
+=== FIN PROMPT ===
 
 Cuando la conversación sea sobre un producto y el trabajo de tu turno esté terminado, cierra con el bloque del expediente de tu turno, como dicen tus instrucciones.`;
 
