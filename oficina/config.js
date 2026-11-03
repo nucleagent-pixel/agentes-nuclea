@@ -20,6 +20,17 @@ export const CHAT_URL = "https://oficina-nuclea-chat.nucleagentes.workers.dev/ch
 export const ADMINS = ["nucleagent@gmail.com"];
 
 /* ---------------------------------------------------------------------
+   MODELOS DE CLAUDE y su precio en USD por millón de tokens (para mostrar
+   cuánto cuesta cada respuesta). "cacheLeer" es lo repetido que Claude ya
+   tenía guardado; "cacheEscribir", lo que guarda por primera vez.
+   --------------------------------------------------------------------- */
+export const MODELOS = {
+  "claude-opus-5-5": { nombre: "Opus 5.5", entrada: 4, salida: 20, cacheLeer: 0.2, cacheEscribir: 5 },
+  "claude-sonnet-5-5": { nombre: "Sonnet 5.5", entrada: 2, salida: 10, cacheLeer: 0.2, cacheEscribir: 2.5 },
+};
+export const MODELO_POR_DEFECTO = "claude-opus-5-5";
+
+/* ---------------------------------------------------------------------
    DEPARTAMENTOS Y AGENTES
    Para sumar un agente nuevo: agrégalo a AGENTES con su departamento y,
    si tiene instrucciones propias, el archivo .md de la carpeta agentes/.
@@ -52,6 +63,7 @@ export const AGENTES = [
       "¿Qué producto del tablero tiene más señales?",
     ],
     instrucciones: "1-detective-oficina.md",
+    modelo: "claude-sonnet-5-5",
     enlace: "https://www.facebook.com/ads/library/",
     esfuerzo: "medium",
     colores: { sombrero: "#5b4636", cinta: "#2b211a", pelo: "#3b2418", piel: "#e9b98f", ropa: "#c9a46a", ropa2: "#8a6a3e", camisa: "#f4efe4", detalle: "#9c2f2f", pantalon: "#3a3530", zapatos: "#24201c" },
@@ -74,6 +86,8 @@ export const AGENTES = [
       "Crea el bono de alimentación",
     ],
     instrucciones: "2-hada-oficina.md",
+    modelo: "claude-opus-5-5",
+    imagenes: true,          // se pueden subir o pegar imágenes en su chat
     esfuerzo: "high",
     colores: { pelo: "#f2cf5b", piel: "#f6d3b8", ropa: "#5fbf6a", ropa2: "#3f9a4f", pantalon: "#5fbf6a", zapatos: "#3f9a4f", detalle: "#ffffff", alas: "rgba(190, 240, 255, 0.55)" },
     estilo: "hada",
@@ -95,6 +109,7 @@ export const AGENTES = [
       "Traduce y adapta este guion en portugués",
     ],
     instrucciones: "3-guionista.md",
+    modelo: "claude-sonnet-5-5",
     esfuerzo: "medium",
     colores: { pelo: "#e8c37a", piel: "#f3d1b8", ropa: "#e85a9a", ropa2: "#b83f78", pantalon: "#f7e3ef", zapatos: "#d6336c", detalle: "#ffffff", labios: "#c2185b" },
     estilo: "columnista",

@@ -175,7 +175,7 @@ h1, h2, h3, h4 { letter-spacing: -.01em; }
 .ayuda a { color: var(--morado); font-weight: 600; }
 .chat-mensajes { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: #fafafd; border-top: 1px solid var(--linea); border-bottom: 1px solid var(--linea); min-height: 0; }
 .msj { display: flex; gap: 8px; align-items: flex-end; }
-.msj img { width: 28px; height: 28px; border-radius: 8px; image-rendering: pixelated; flex: none; }
+.msj > img { width: 28px; height: 28px; border-radius: 8px; image-rendering: pixelated; flex: none; }
 .msj.persona { justify-content: flex-end; }
 .burbuja { max-width: 88%; padding: 10px 13px; border-radius: 16px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .burbuja small { display: block; font-size: 11px; font-weight: 700; opacity: .7; margin-bottom: 2px; }
@@ -206,6 +206,15 @@ h1, h2, h3, h4 { letter-spacing: -.01em; }
 .btn-enviar:disabled { background: var(--linea-fuerte); cursor: default; }
 .btn-enviar.girando { animation: latido 1s infinite; }
 .centro-txt { text-align: center; }
+.costo { display: block; margin-top: 6px; font-size: 11px; color: var(--tenue); white-space: nowrap; }
+.adjunta { display: block; max-width: 220px; max-height: 220px; border-radius: 10px; margin: 4px 0 6px; object-fit: cover; }
+.adjuntos { display: flex; gap: 8px; flex-wrap: wrap; }
+.adjuntos:not(:empty) { margin-bottom: 8px; }
+.miniatura { position: relative; }
+.miniatura img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; display: block; box-shadow: inset 0 0 0 1px var(--linea-fuerte); }
+.miniatura button { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: var(--tinta); color: #fff; font-size: 11px; cursor: pointer; }
+.b-adjuntar { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; cursor: pointer; font-size: 18px; box-shadow: inset 0 0 0 1px var(--linea-fuerte); flex: none; }
+.b-adjuntar:hover { background: #f3f2f8; }
 
 /* ---------- Tarjeta del agente ---------- */
 dialog.d-agente { width: min(480px, calc(100vw - 32px)); }

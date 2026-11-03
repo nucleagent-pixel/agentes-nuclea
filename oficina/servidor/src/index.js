@@ -53,7 +53,7 @@ export default {
     if (!env.ANTHROPIC_API_KEY) return json(500, { error: "Falta la clave de Claude en Cloudflare (ANTHROPIC_API_KEY)" });
     const instrucciones = INSTRUCCIONES[agente.id] ? sinEncabezado(INSTRUCCIONES[agente.id]) : generico(agente);
     const cuerpo = {
-      model: env.MODELO || MODELO,
+      model: agente.modelo || env.MODELO || MODELO,
       max_tokens: 64000,
       stream: true,
       output_config: { effort: agente.esfuerzo || "medium" },

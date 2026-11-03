@@ -14,7 +14,7 @@ test("junta el texto aunque los eventos lleguen partidos", async () => {
   const r = await leerRespuesta(flujo([todo.slice(0, 50), todo.slice(50, 140), todo.slice(140)]), { alTexto: (t) => vistos.push(t) });
   assert.equal(r.texto, "Hola mundo");
   assert.equal(r.fin, "end_turn");
-  assert.deepStrictEqual(r.uso, { entrada: 10, salida: 3, cache: 0 });
+  assert.deepStrictEqual(r.uso, { entrada: 10, salida: 3, cache: 0, cacheEscrito: 0, modelo: "" });
   assert.deepStrictEqual(vistos, ["Hola ", "Hola mundo"]);
 });
 

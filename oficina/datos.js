@@ -95,7 +95,7 @@ async function crearFirebase() {
     },
     // Guarda el mensaje, pide la respuesta al servidor del chat (Cloudflare) y la va
     // guardando mientras llega, para que todo el equipo la vea escribirse.
-    async enviarMensaje({ conv, agente, producto, texto, alCrear }) {
+    async enviarMensaje({ conv, agente, producto, texto, imagenes = [], alCrear }) {
       if (!CHAT_URL) throw new Error("Falta la dirección del servidor del chat en config.js");
       let convId = conv.id;
       if (!convId) {
@@ -107,7 +107,8 @@ async function crearFirebase() {
       }
       const refC = ref("conversaciones", convId);
       const mensajes = fs.collection(db, "conversaciones", convId, "mensajes");
-      await fs.addDoc(mensajes, { rol: "persona", quien: usuario.nombre, correo: usuario.correo, texto, estado: "listo", creadoEn: ahora() });
+      await fs.addDoc(mensajes, { rol: "persona", quien: usuario.nombre, correo: usuario.correo, texto, estado: "listo", creadoEn: ahora(),
+        ...(imagenes.length ? { imagenes: imagenes.map(({ tipo, datos }) => ({ tipo, datos })) } : {}) });
       const resp = await fs.addDoc(mensajes, { rol: "agente", texto: "", estado: "escribiendo", creadoEn: ahora() });
       await fs.updateDoc(refC, { escribiendo: true, actualizadoEn: ahora(), ultimo: { quien: usuario.nombre, texto: texto.slice(0, 140) } });
       if (producto && producto.etapa === agente.etapa && producto.estado !== "en_curso") {
@@ -236,7 +237,7 @@ function crearDemo() {
       const f = () => cb(copia(mensajes[convId] || []));
       oyentesChat.add(f); setTimeout(f, 0); return () => oyentesChat.delete(f);
     },
-    async enviarMensaje({ conv, agente, producto, texto, alCrear }) {
+    async enviarMensaje({ conv, agente, producto, texto, imagenes = [], alCrear }) {
       let id = conv.id;
       if (!id) {
         id = "c" + Date.now();
@@ -244,7 +245,7 @@ function crearDemo() {
         alCrear?.(id);
       }
       const lista = (mensajes[id] ||= []);
-      lista.push({ id: "m" + Date.now(), rol: "persona", quien: usuario.nombre, texto, estado: "listo", creadoEn: ahora() });
+      lista.push({ id: "m" + Date.now(), rol: "persona", quien: usuario.nombre, texto, imagenes, estado: "listo", creadoEn: ahora() });
       const r = { id: "m" + Date.now() + "r", rol: "agente", texto: "", estado: "escribiendo", creadoEn: ahora() };
       lista.push(r);
       if (producto && producto.etapa === agente.etapa && producto.estado !== "en_curso") cambiar(producto.id, () => ({ estado: "en_curso", responsable: { correo: usuario.correo, nombre: usuario.nombre } }));
@@ -252,6 +253,7 @@ function crearDemo() {
       const completo = respuestaDemo(producto, agente.etapa, agente).replace("{n}", productos.filter((p) => p.etapa !== "listo").length);
       for (let i = 0; i < completo.length; i += 24) { r.texto = completo.slice(0, i + 24); avisarConv(); await new Promise((ok) => setTimeout(ok, 30)); }
       r.estado = "listo";
+      r.uso = { entrada: 1200, salida: Math.round(completo.length / 4), cache: 8000, cacheEscrito: 0, modelo: agente.modelo };
       cambiarConv(id, { escribiendo: false, ultimo: { quien: agente.nombre, texto: completo.slice(0, 140) } });
       return id;
     },

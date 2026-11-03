@@ -1,6 +1,6 @@
 // Chat siempre abierto con cada agente, a la derecha de la oficina.
 // Cada agente tiene conversaciones libres y conversaciones ligadas a un producto.
-import { AGENTES, ETAPAS } from "./config.js";
+import { AGENTES, ETAPAS, MODELOS, MODELO_POR_DEFECTO } from "./config.js";
 import { retrato } from "./mundo.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -89,10 +89,37 @@ const hace = (iso) => {
   if (min < 1440) return `hace ${Math.round(min / 60)} h`;
   return new Date(iso).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
 };
+// Costo aproximado en USD de una respuesta, según los tokens que informó Claude.
+export function costo(uso, modeloAgente) {
+  if (!uso) return 0;
+  const p = MODELOS[uso.modelo] || MODELOS[modeloAgente] || MODELOS[MODELO_POR_DEFECTO];
+  return ((uso.entrada || 0) * p.entrada + (uso.salida || 0) * p.salida + (uso.cache || 0) * p.cacheLeer + (uso.cacheEscrito || 0) * p.cacheEscribir) / 1e6;
+}
+const usd = (n) => "US$" + (n < 0.01 ? n.toFixed(3) : n.toFixed(2)).replace(".", ",");
+
+// Achica una imagen en el navegador (lado mayor 1568 px, JPEG) para guardarla con el mensaje.
+async function prepararImagen(archivo) {
+  const url = URL.createObjectURL(archivo);
+  try {
+    const img = new Image();
+    await new Promise((ok, mal) => { img.onload = ok; img.onerror = () => mal(new Error("No se pudo leer la imagen")); img.src = url; });
+    const k = Math.min(1, 1568 / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(img, 0, 0, c.width, c.height);
+    let calidad = 0.85, dato;
+    do { dato = c.toDataURL("image/jpeg", calidad); calidad -= 0.15; } while (dato.length > 250000 && calidad > 0.3);
+    return { tipo: "image/jpeg", datos: dato.split(",")[1], url: dato };
+  } finally { URL.revokeObjectURL(url); }
+}
+const MAX_IMAGENES = 3;
+
 const nombreEtapa = (id) => ETAPAS.find((e) => e.id === id)?.nombre || id;
 
 export function crearChat({ contenedor, datos, aviso, usuario, productos, conversaciones, alVerProducto, alCerrar }) {
-  let ag = AGENTES[0], convId = null, productoNuevo = "", mensajes = [], dejar = null;
+  let ag = AGENTES[0], convId = null, productoNuevo = "", mensajes = [], dejar = null, adjuntos = [];
   const enviando = new Set();          // conversaciones a las que este navegador les está escribiendo
   const $ = (sel) => contenedor.querySelector(sel);
 
@@ -111,6 +138,7 @@ export function crearChat({ contenedor, datos, aviso, usuario, productos, conver
   }
 
   function elegir(agente, id, deProducto = "") {
+    if (agente !== ag) adjuntos = [];
     ag = agente; convId = id; productoNuevo = deProducto;
     pintar();
     escuchar();
@@ -136,9 +164,11 @@ export function crearChat({ contenedor, datos, aviso, usuario, productos, conver
       <div class="chat-mensajes" id="c-mensajes"></div>
       <div class="chat-archivos" id="c-archivos"></div>
       <form class="chat-escribir" id="c-form">
-        <textarea id="c-texto" rows="2" placeholder="Escríbele a ${esc(ag.nombre)}…"></textarea>
+        <div class="adjuntos" id="c-adjuntos"></div>
+        <textarea id="c-texto" rows="2" placeholder="Escríbele a ${esc(ag.nombre)}…${ag.imagenes ? " (puedes pegar imágenes)" : ""}"></textarea>
         <div class="fila-envio">
-          <span class="modelo">Claude Opus 5.5 · ve todo el tablero</span>
+          ${ag.imagenes ? `<label class="b-adjuntar" title="Subir imágenes">🖼️<input type="file" id="c-archivo" accept="image/*" multiple hidden></label>` : ""}
+          <span class="modelo" id="c-modelo"></span>
           <button type="button" class="btn btn-sec btn-mini" id="c-entregar" hidden></button>
           <button class="btn-enviar" id="c-enviar" aria-label="Enviar">↑</button>
         </div>
@@ -151,6 +181,14 @@ export function crearChat({ contenedor, datos, aviso, usuario, productos, conver
     area.onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } };
     area.oninput = () => { area.style.height = "auto"; area.style.height = Math.min(area.scrollHeight, 220) + "px"; };
     form.onsubmit = (e) => { e.preventDefault(); enviar(area.value.trim()); };
+    if (ag.imagenes) {
+      $("#c-archivo").onchange = (e) => { agregarImagenes([...e.target.files]); e.target.value = ""; };
+      area.addEventListener("paste", (e) => {
+        const imgs = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/"));
+        if (imgs.length) { e.preventDefault(); agregarImagenes(imgs); }
+      });
+    }
+    pintarAdjuntos();
     $("#c-entregar").onclick = entregar;
     refrescar();
     pintarMensajes();
@@ -238,8 +276,8 @@ export function crearChat({ contenedor, datos, aviso, usuario, productos, conver
       const escribiendo = vivo(m);
       if (m.estado === "escribiendo" && !escribiendo) m = { ...m, estado: "error", error: "La respuesta se interrumpió (se cerró la página). Envía el mensaje otra vez." };
       return m.rol === "agente"
-        ? `<div class="msj agente"><img src="${retrato(ag, 28)}" alt=""><div class="burbuja agente">${formato(m.texto, escribiendo)}${escribiendo ? `<span class="cursor">▍</span>` : ""}${m.estado === "error" ? `<p class="error">${esc(m.error || "No se pudo completar la respuesta")}</p>` : ""}</div></div>`
-        : `<div class="msj persona"><div class="burbuja persona"><small>${esc(m.quien || "")}</small>${esc(m.texto)}</div></div>`;
+        ? `<div class="msj agente"><img src="${retrato(ag, 28)}" alt=""><div class="burbuja agente">${formato(m.texto, escribiendo)}${escribiendo ? `<span class="cursor">▍</span>` : ""}${m.estado === "error" ? `<p class="error">${esc(m.error || "No se pudo completar la respuesta")}</p>` : ""}${m.uso ? `<span class="costo" title="Costo aproximado de esta respuesta">≈ ${usd(costo(m.uso, ag.modelo))}</span>` : ""}</div></div>`
+        : `<div class="msj persona"><div class="burbuja persona"><small>${esc(m.quien || "")}</small>${(m.imagenes || []).map((i) => `<img class="adjunta" src="${i.url || `data:${esc(i.tipo)};base64,${esc(i.datos)}`}" alt="Imagen adjunta">`).join("")}${esc(m.texto)}</div></div>`;
     }).join("") || `<p class="nota centro-txt">Cargando…</p>`;
     if (abajo || enviando.has(convId)) caja.scrollTop = caja.scrollHeight;
     pintarBotones();
@@ -255,6 +293,11 @@ export function crearChat({ contenedor, datos, aviso, usuario, productos, conver
       ent.hidden = !(p && ag.etapa && p.etapa === ag.etapa && exp && !ocup);
       const sig = AGENTES.find((a) => a.etapa === siguiente(ag.etapa));
       ent.textContent = sig ? `Entregar a ${sig.nombre} →` : "Marcar como listo ✓";
+    }
+    const lab = $("#c-modelo");
+    if (lab) {
+      const total = mensajes.reduce((s, m) => s + costo(m.uso, ag.modelo), 0);
+      lab.textContent = `Claude ${(MODELOS[ag.modelo] || MODELOS[MODELO_POR_DEFECTO]).nombre}${total ? " · esta conversación ≈ " + usd(total) : " · ve todo el tablero"}`;
     }
     const est = $("#c-estado");
     if (est) est.innerHTML = ocup ? `<span class="vivo">● Escribiendo…</span>` : `${esc(ag.rol)} · <span class="en-linea">● En línea</span>`;
@@ -288,19 +331,38 @@ export function crearChat({ contenedor, datos, aviso, usuario, productos, conver
   }
 
   /* ---------- Enviar y entregar ---------- */
+  async function agregarImagenes(archivos) {
+    for (const f of archivos) {
+      if (adjuntos.length >= MAX_IMAGENES) { aviso(`Máximo ${MAX_IMAGENES} imágenes por mensaje`); break; }
+      if (!f.type.startsWith("image/")) continue;
+      try { adjuntos.push(await prepararImagen(f)); } catch (e) { aviso(e.message); }
+    }
+    pintarAdjuntos();
+  }
+
+  function pintarAdjuntos() {
+    const zona = $("#c-adjuntos");
+    if (!zona) return;
+    zona.innerHTML = adjuntos.map((a, i) => `<span class="miniatura"><img src="${a.url}" alt=""><button type="button" data-quitar="${i}" aria-label="Quitar imagen">✕</button></span>`).join("");
+    zona.querySelectorAll("[data-quitar]").forEach((b) => (b.onclick = () => { adjuntos.splice(Number(b.dataset.quitar), 1); pintarAdjuntos(); }));
+  }
+
   async function enviar(texto) {
-    if (!texto || ocupado()) return;
+    const imagenes = adjuntos;
+    if ((!texto && !imagenes.length) || ocupado()) return;
+    if (!texto) texto = imagenes.length > 1 ? "(Te envío estas imágenes)" : "(Te envío esta imagen)";
+    adjuntos = []; pintarAdjuntos();
     const area = $("#c-texto");
     if (area) { area.value = ""; area.style.height = ""; }
     const agente = ag, p = producto();
     let id = convId;
     const c = id ? conv() : { titulo: "" };
     enviando.add(id);
-    if (!id) { mensajes = [{ rol: "persona", quien: usuario().nombre, texto, estado: "listo" }, { rol: "agente", texto: "", estado: "escribiendo", creadoEn: new Date().toISOString() }]; pintarMensajes(); }
+    if (!id) { mensajes = [{ rol: "persona", quien: usuario().nombre, texto, imagenes, estado: "listo" }, { rol: "agente", texto: "", estado: "escribiendo", creadoEn: new Date().toISOString() }]; pintarMensajes(); }
     pintarBotones();
     try {
       await datos.enviarMensaje({
-        conv: c || { id }, agente, producto: p, texto,
+        conv: c || { id }, agente, producto: p, texto, imagenes,
         alCrear(nuevo) {
           enviando.delete(null); enviando.add(nuevo); id = nuevo;
           if (ag === agente && !convId) { convId = nuevo; productoNuevo = ""; escuchar(); refrescar(); }
@@ -309,7 +371,7 @@ export function crearChat({ contenedor, datos, aviso, usuario, productos, conver
     } catch (err) {
       aviso(err.message);
       const a = $("#c-texto");
-      if (a && !a.value && ag === agente) a.value = texto;
+      if (a && !a.value && ag === agente) { a.value = texto; adjuntos = imagenes; pintarAdjuntos(); }
     } finally {
       enviando.delete(id);
       enviando.delete(null);

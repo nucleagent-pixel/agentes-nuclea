@@ -87,16 +87,26 @@ export function sistema({ agente, agentes, proximos, producto, productos = [], c
 }
 
 // Convierte los mensajes guardados en turnos alternados user/assistant.
+// Las imágenes que subió la persona van como bloques de imagen antes del texto.
 export function historial(mensajes) {
   const turnos = [];
   for (const m of mensajes) {
-    if (m.estado === "error" || m.estado === "escribiendo" || !m.texto?.trim()) continue;
+    const imagenes = m.rol === "agente" ? [] : (m.imagenes || []).filter((i) => i?.datos && /^image\/(jpeg|png|gif|webp)$/.test(i.tipo));
+    if (m.estado === "error" || m.estado === "escribiendo" || (!m.texto?.trim() && !imagenes.length)) continue;
     const role = m.rol === "agente" ? "assistant" : "user";
-    const texto = role === "user" && m.quien ? `[${m.quien}] ${m.texto}` : m.texto;
+    const texto = role === "user" && m.quien ? `[${m.quien}] ${m.texto || ""}` : m.texto;
+    const bloques = [
+      ...imagenes.map((i) => ({ type: "image", source: { type: "base64", media_type: i.tipo, data: i.datos } })),
+      { type: "text", text: texto },
+    ];
     const ultimo = turnos[turnos.length - 1];
-    if (ultimo && ultimo.role === role) ultimo.content += "\n\n" + texto;
-    else turnos.push({ role, content: texto });
+    if (ultimo && ultimo.role === role) ultimo.bloques.push(...bloques);
+    else turnos.push({ role, bloques });
   }
   while (turnos.length && turnos[0].role !== "user") turnos.shift();
-  return turnos;
+  // Si un turno es solo texto, se envía como un texto simple.
+  return turnos.map(({ role, bloques }) => ({
+    role,
+    content: bloques.every((b) => b.type === "text") ? bloques.map((b) => b.text).join("\n\n") : bloques,
+  }));
 }

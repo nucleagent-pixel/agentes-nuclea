@@ -1,7 +1,7 @@
 // Lee la respuesta en streaming de Claude (eventos SSE) y avisa cada vez que llega texto.
 export async function leerRespuesta(cuerpo, { alTexto }) {
   const lector = cuerpo.pipeThrough(new TextDecoderStream()).getReader();
-  let pendiente = "", texto = "", fin = null, uso = { entrada: 0, salida: 0, cache: 0 };
+  let pendiente = "", texto = "", fin = null, uso = { entrada: 0, salida: 0, cache: 0, cacheEscrito: 0, modelo: "" };
   const evento = (bloque) => {
     const linea = bloque.split("\n").find((l) => l.startsWith("data:"));
     if (!linea) return;
@@ -11,6 +11,8 @@ export async function leerRespuesta(cuerpo, { alTexto }) {
     else if (d.type === "message_start") {
       uso.entrada = d.message?.usage?.input_tokens || 0;
       uso.cache = d.message?.usage?.cache_read_input_tokens || 0;
+      uso.cacheEscrito = d.message?.usage?.cache_creation_input_tokens || 0;
+      uso.modelo = d.message?.model || "";
     } else if (d.type === "message_delta") { fin = d.delta?.stop_reason || fin; uso.salida = d.usage?.output_tokens || uso.salida; }
     else if (d.type === "error") throw new Error(d.error?.type === "overloaded_error" ? "Claude está ocupado, intenta en un minuto" : "Claude se interrumpió: " + (d.error?.message || "error"));
   };

@@ -24,6 +24,18 @@ test("el historial alterna turnos y omite errores y respuestas a medias", () => 
   ]);
 });
 
+test("las imágenes de la persona van como bloques antes del texto", () => {
+  const h = historial([
+    { rol: "persona", quien: "Nicole", texto: "mira", imagenes: [{ tipo: "image/jpeg", datos: "AAA" }, { tipo: "text/html", datos: "X" }] },
+    { rol: "persona", quien: "Nicole", texto: "y esto" },
+  ]);
+  assert.deepStrictEqual(h, [{ role: "user", content: [
+    { type: "image", source: { type: "base64", media_type: "image/jpeg", data: "AAA" } },
+    { type: "text", text: "[Nicole] mira" },
+    { type: "text", text: "[Nicole] y esto" },
+  ] }]);
+});
+
 test("en un producto, el agente ve completos solo los expedientes anteriores a su turno", () => {
   const producto = { id: "p1", nombre: "Reto X", pais: "Perú", etapa: "producto", expedientes: { investigacion: "EXP-1", guiones: "EXP-3" } };
   const s = sistema({ agente: hada, agentes: AGENTES, proximos: PROXIMOS, producto, productos: [producto], conocimiento: "REF", instrucciones: "INSTR" });

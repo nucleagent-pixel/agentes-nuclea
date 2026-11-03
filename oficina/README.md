@@ -25,7 +25,9 @@ El chat está siempre abierto a la derecha (en pantallas pequeñas, con el botó
 - **Información en conjunto:** en cada mensaje, todos los agentes ven el tablero completo (productos, quién los trabaja y un resumen de los expedientes) y saben qué hace cada agente. Así cada uno trabaja por su lado, pero con la información de todos.
 - Cuando el Hada entrega archivos, aparecen botones para descargar la app para Netlify (.zip, con los íconos PNG generados) y los bonos.
 - El Detective no navega por internet: la búsqueda se hace con Claude in Chrome y se pega en su chat.
-- En **Conocimiento** (solo administradores) se pega o se sube el material de referencia de cada agente.
+- En **Conocimiento** (solo administradores) se pega o se sube el material de referencia de cada agente. Todo eso viaja en cada mensaje: mientras más corto, más barato.
+- **Modelos y costo:** el Hada usa Claude Opus 5.5; el Detective y la Columnista, Claude Sonnet 5.5 (la mitad del precio). Se cambia en `config.js`, campo `modelo` de cada agente. Debajo de cada respuesta aparece su costo aproximado y, abajo del chat, el total de la conversación.
+- **Imágenes:** en el chat del Hada se pueden subir (botón 🖼️) o pegar hasta 3 imágenes por mensaje, por ejemplo una captura del producto original o una paleta. La oficina las achica antes de guardarlas. Para activarlo en otro agente, pon `imagenes: true` en `config.js`.
 
 ### Activar el chat (una sola vez)
 
